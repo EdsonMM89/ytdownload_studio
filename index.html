@@ -21,6 +21,25 @@
         text-align: center;
         border-bottom: 2px solid #ff4444;
     }
+    nav {
+        display: flex;
+        justify-content: center;
+        background: #1a1a1a;
+        border-bottom: 1px solid #333;
+    }
+    nav button {
+        background: none;
+        border: none;
+        color: #f1f1f1;
+        padding: 12px 20px;
+        font-size: 16px;
+        cursor: pointer;
+        transition: 0.3s;
+    }
+    nav button:hover, nav button.active {
+        background: #333;
+        color: #ff4444;
+    }
     main {
         display: flex;
         padding: 20px;
@@ -37,7 +56,7 @@
         border: 1px solid #333;
         padding: 10px;
         resize: none;
-        height: 400px;
+        height: 350px;
         font-family: Consolas, monospace;
         font-size: 14px;
     }
@@ -50,10 +69,6 @@
         cursor: pointer;
         margin-top: 10px;
         border-radius: 5px;
-        transition: 0.3s;
-    }
-    .run-btn:hover {
-        background: #ff6666;
     }
     .console {
         background: #000;
@@ -89,30 +104,44 @@
 
 <header>YTDOWNLOAD Studio</header>
 
+<nav>
+    <button class="active" onclick="mostrarTab(0)">Descarga Simple</button>
+    <button onclick="mostrarTab(1)">Playlist</button>
+    <button onclick="mostrarTab(2)">Formatos y Condiciones</button>
+</nav>
+
 <main>
     <div class="editor">
-        <textarea id="code">// EJEMPLOS DE USO DEL LENGUAJE YTDOWNLOAD
+        <textarea id="code"></textarea>
+        <button class="run-btn" onclick="ejecutarCodigo()">▶ Ejecutar Código</button>
+        <div class="console" id="console">> Esperando ejecución...</div>
+    </div>
 
-// DESCARGA SIMPLE
-FUNCION main() {
+    <div class="sidebar">
+        <h3>Archivos</h3>
+        <div class="file">yt1.ytd.txt</div>
+        <div class="file">playlist.ytd.txt</div>
+        <div class="file">formatos.ytd.txt</div>
+    </div>
+</main>
+
+<script>
+const ejemplos = [
+`FUNCION main() {
     VAR link = '';
     IMPRIMIR 'Ingresa la URL del video:';
     LEER link;
     descargar(link, mp4, 'Video1', 'C:/Videos');
-} FIN!
-
-// DESCARGA INTERACTIVA (PLAYLIST)
-FUNCION main() {
+} FIN!`,
+`FUNCION main() {
     VAR playlist = '';
     IMPRIMIR 'Ingresa la URL de la PLAYLIST:';
     LEER playlist;
     PARA CADA video EN playlist HACER {
         descargar(video.url, mp3, video.nombre, 'C:/Musica/Playlist');
     } FIN;
-} FIN!
-
-// CONDICIONES Y MÚLTIPLES FORMATOS
-FUNCION main() {
+} FIN!`,
+`FUNCION main() {
     VAR enlaces = ['https://youtu.be/v001' AS 'edits', 'https://youtu.be/v002' AS 'Clase1'];
     VAR formato = '';
     IMPRIMIR 'Selecciona el formato: (mp3/mp4/mkv)';
@@ -122,22 +151,18 @@ FUNCION main() {
             descargar(e.url, mp4, e.nombre, 'D:/Videos');
         }
     } FIN;
-} FIN!
-        </textarea>
+} FIN!`
+];
 
-        <button class="run-btn" onclick="ejecutarCodigo()">▶ Ejecutar Código</button>
-        <div class="console" id="console">> Esperando ejecución...</div>
-    </div>
+document.getElementById("code").value = ejemplos[0];
 
-    <div class="sidebar">
-        <h3>Gestor de Archivos</h3>
-        <div class="file">yt1.ytd.txt</div>
-        <div class="file">playlist.ytd.txt</div>
-        <div class="file">formatos.ytd.txt</div>
-    </div>
-</main>
+function mostrarTab(index) {
+    document.querySelectorAll("nav button").forEach(btn => btn.classList.remove("active"));
+    document.querySelectorAll("nav button")[index].classList.add("active");
+    document.getElementById("code").value = ejemplos[index];
+    document.getElementById("console").innerText = "> Esperando ejecución...";
+}
 
-<script>
 function escribirConsola(texto) {
     const consola = document.getElementById("console");
     consola.innerHTML += "\\n" + texto;
@@ -147,26 +172,22 @@ function escribirConsola(texto) {
 function ejecutarCodigo() {
     const code = document.getElementById("code").value;
     const consola = document.getElementById("console");
-    consola.innerHTML = "> Ejecutando código...\n";
+    consola.innerHTML = "> Ejecutando código...\\n";
 
-    // Simulación según palabras clave
-    if (code.includes("descargar(link")) {
-        escribirConsola("Iniciando descarga de Video1.mp4...");
-        setTimeout(() => escribirConsola("Guardando en C:/Videos"), 800);
-        setTimeout(() => escribirConsola("Descarga completada "), 1500);
-    }
-    if (code.includes("playlist")) {
-        escribirConsola("Iniciando descarga de playlist...");
-        setTimeout(() => escribirConsola("Descargando video1.mp3..."), 700);
-        setTimeout(() => escribirConsola("Descargando video2.mp3..."), 1200);
-        setTimeout(() => escribirConsola("Playlist descargada correctamente "), 2000);
-    }
-    if (code.includes("formato")) {
-        escribirConsola("Seleccionando formato...");
-        setTimeout(() => escribirConsola("Descargando edits.mp4..."), 1000);
-        setTimeout(() => escribirConsola("Descargando Clase1.mp4..."), 1700);
-        setTimeout(() => escribirConsola("Descarga por formato completada "), 2500);
-    }
+    let url = prompt("🔗 Ingresa la URL del video o playlist:");
+    if (!url) return escribirConsola("Error: no se ingresó ninguna URL.");
+
+    let tipo = prompt("📥 ¿Qué deseas descargar? (musica / video)").toLowerCase();
+    if (tipo !== "musica" && tipo !== "video") return escribirConsola("Formato no válido.");
+
+    let calidad = prompt(`🎚️ Elige calidad para ${tipo}: (baja / media / alta)`);
+
+    escribirConsola(`Procesando descarga desde: ${url}`);
+    escribirConsola(`Tipo: ${tipo.toUpperCase()} | Calidad: ${calidad.toUpperCase()}`);
+    setTimeout(() => escribirConsola("Conectando al servidor..."), 800);
+    setTimeout(() => escribirConsola("Descargando datos..."), 1500);
+    setTimeout(() => escribirConsola("Guardando archivo..."), 2200);
+    setTimeout(() => escribirConsola("✅ Descarga completada exitosamente."), 3000);
 }
 </script>
 
