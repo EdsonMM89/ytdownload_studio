@@ -1,103 +1,44 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>YTDOWNLOAD Studio</title>
 <style>
-    body {
-        background-color: #121212;
-        color: #f1f1f1;
-        font-family: Consolas, monospace;
-        margin: 0;
-        padding: 0;
+    :root{
+        --bg:#0b0b0b;
+        --panel:#0f0f0f;
+        --muted:#9aa0a6;
+        --green:#2be86a;
+        --accent:#ff4444;
     }
-    header {
-        background: #202020;
-        padding: 10px 20px;
-        font-size: 22px;
-        font-weight: bold;
-        color: #ff4444;
-        text-align: center;
-        border-bottom: 2px solid #ff4444;
-    }
-    nav {
-        display: flex;
-        justify-content: center;
-        background: #1a1a1a;
-        border-bottom: 1px solid #333;
-    }
-    nav button {
-        background: none;
-        border: none;
-        color: #f1f1f1;
-        padding: 12px 20px;
-        font-size: 16px;
-        cursor: pointer;
-        transition: 0.3s;
-    }
-    nav button:hover, nav button.active {
-        background: #333;
-        color: #ff4444;
-    }
-    main {
-        display: flex;
-        padding: 20px;
-        gap: 20px;
-    }
-    .editor {
-        flex: 3;
-        display: flex;
-        flex-direction: column;
-    }
-    textarea {
-        background: #1e1e1e;
-        color: #f8f8f8;
-        border: 1px solid #333;
-        padding: 10px;
-        resize: none;
-        height: 350px;
-        font-family: Consolas, monospace;
-        font-size: 14px;
-    }
-    .run-btn {
-        background: #ff4444;
-        border: none;
-        color: white;
-        padding: 12px;
-        font-size: 16px;
-        cursor: pointer;
-        margin-top: 10px;
-        border-radius: 5px;
-    }
-    .console {
-        background: #000;
-        color: #00ff66;
-        border: 1px solid #333;
-        padding: 10px;
-        height: 180px;
-        overflow-y: auto;
-        margin-top: 20px;
-    }
-    .sidebar {
-        flex: 1;
-        background: #1a1a1a;
-        border: 1px solid #333;
-        padding: 10px;
-    }
-    .sidebar h3 {
-        color: #ff4444;
-        text-align: center;
-        margin-top: 0;
-    }
-    .file {
-        background: #222;
-        padding: 10px;
-        margin: 5px 0;
-        border: 1px solid #333;
-        border-radius: 5px;
-        text-align: center;
-    }
+    html,body{height:100%;margin:0;font-family:Consolas,monospace;background:var(--bg);color:#e6e6e6}
+    header{background:#101010;padding:12px 16px;text-align:center;font-weight:700;font-size:20px;color:var(--accent);border-bottom:2px solid var(--accent)}
+    nav{display:flex;justify-content:center;background:#121212;border-bottom:1px solid #222}
+    nav button{background:none;border:0;padding:12px 18px;color:#ddd;cursor:pointer;font-size:15px}
+    nav button.active, nav button:hover{background:#1b1b1b;color:var(--accent)}
+    main{display:flex;gap:18px;padding:18px}
+    .editor{flex:3;display:flex;flex-direction:column}
+    textarea{background:#0e0e0e;color:#dfe;marg:0;border:1px solid #222;padding:10px;height:260px;resize:vertical;font-family:Consolas,monospace}
+    .run-btn{background:var(--accent);color:#fff;border:0;padding:10px 14px;margin-top:10px;border-radius:6px;cursor:pointer;align-self:flex-start}
+    .sidebar{width:220px;background:#111;padding:12px;border:1px solid #222}
+    .sidebar h3{color:var(--accent);text-align:center;margin:6px 0}
+    .file{background:#151515;padding:8px;margin:6px 0;border-radius:6px;text-align:center;border:1px solid #222;color:#ccc}
+    /* Terminal */
+    .terminal-wrap{margin-top:12px;border:1px solid #222;background:#000;padding:12px;border-radius:6px;min-height:260px;display:flex;flex-direction:column}
+    .term-output{flex:1;overflow:auto;color:var(--green);font-size:13px;line-height:1.35;padding-right:8px}
+    .term-line{white-space:pre-wrap;}
+    .term-prompt{color:var(--green);display:inline}
+    .term-input-row{display:flex;align-items:flex-start;margin-top:8px}
+    .term-input{flex:1;background:transparent;border:0;outline:none;color:var(--green);font-family:Consolas,monospace;font-size:13px}
+    .input-cursor{width:10px;display:inline-block;margin-left:4px;animation:blink 1s steps(2,start) infinite;color:var(--green)}
+    @keyframes blink{50%{opacity:0}}
+    .small-muted{color:#999;font-size:12px;margin-top:6px}
+    /* numbered list style */
+    .col-list{color:var(--green);margin:6px 0 0 10px}
+    .col-list div{margin:6px 0}
+    /* responsive */
+    @media (max-width:900px){main{flex-direction:column}.sidebar{width:100%}}
 </style>
 </head>
 <body>
@@ -105,27 +46,42 @@
 <header>YTDOWNLOAD Studio</header>
 
 <nav>
-    <button class="active" onclick="mostrarTab(0)">Descarga Simple</button>
-    <button onclick="mostrarTab(1)">Playlist</button>
-    <button onclick="mostrarTab(2)">Formatos y Condiciones</button>
+    <button class="active" data-tab="0" onclick="mostrarTab(0)">Descarga Simple</button>
+    <button data-tab="1" onclick="mostrarTab(1)">Playlist</button>
+    <button data-tab="2" onclick="mostrarTab(2)">Formatos y Condiciones</button>
 </nav>
 
 <main>
     <div class="editor">
-        <textarea id="code"></textarea>
-        <button class="run-btn" onclick="ejecutarCodigo()">▶ Ejecutar Código</button>
-        <div class="console" id="console">> Esperando ejecución...</div>
+        <textarea id="code" spellcheck="false"></textarea>
+        <button class="run-btn" id="runBtn">▶ Ejecutar Código</button>
+
+        <div class="terminal-wrap" id="terminalWrap">
+            <div id="termOutput" class="term-output">
+                <!-- líneas añadidas por JS -->
+            </div>
+
+            <div class="term-input-row">
+                <span class="term-prompt">&gt; </span>
+                <input id="termInput" class="term-input" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+                <span id="cursor" class="input-cursor">_</span>
+            </div>
+            <div class="small-muted">Escribe tu respuesta y presiona Enter. Usa números para elegir opciones.</div>
+        </div>
     </div>
 
     <div class="sidebar">
         <h3>Archivos</h3>
-        <div class="file">yt1.ytd.txt</div>
-        <div class="file">playlist.ytd.txt</div>
-        <div class="file">formatos.ytd.txt</div>
+        <div class="file" onclick="cargarEjemplo(0)">simple.ytd</div>
+        <div class="file" onclick="cargarEjemplo(1)">playlist.ytd</div>
+        <div class="file" onclick="cargarEjemplo(2)">formatos.ytd</div>
+        <div style="height:8px"></div>
+        <div class="small-muted" style="text-align:center">Ejemplos rápidos — haz click para cargar</div>
     </div>
 </main>
 
 <script>
+/* ---------- ejemplos por pestaña ---------- */
 const ejemplos = [
 `FUNCION main() {
     VAR link = '';
@@ -154,41 +110,316 @@ const ejemplos = [
 } FIN!`
 ];
 
+const FORMATS = ["mp3","mp4","mkv","webm","flac","avi"];
+const VIDEO_QUALS = ["480p","720p","1080p"];
+const AUDIO_QUALS = ["128 kbps","192 kbps","320 kbps"];
+
+/* estado global de la terminal */
+let currentTab = 0;
+let state = null; // flujo interno (obj)
+let isRunning = false;
+
+const termOut = document.getElementById('termOutput');
+const termInput = document.getElementById('termInput');
+const runBtn = document.getElementById('runBtn');
+
+/* Inicial */
 document.getElementById("code").value = ejemplos[0];
+mostrarPrompt("> Presiona ▶ Ejecutar Código para iniciar la simulación.");
 
-function mostrarTab(index) {
-    document.querySelectorAll("nav button").forEach(btn => btn.classList.remove("active"));
-    document.querySelectorAll("nav button")[index].classList.add("active");
-    document.getElementById("code").value = ejemplos[index];
-    document.getElementById("console").innerText = "> Esperando ejecución...";
+/* pestañas */
+function mostrarTab(i){
+    currentTab = i;
+    document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('nav button')[i].classList.add('active');
+    document.getElementById('code').value = ejemplos[i];
+    resetTerminal();
+    mostrarPrompt("> Pestaña: " + (i===0? "Descarga Simple" : i===1? "Playlist" : "Formatos y Condiciones"));
 }
 
-function escribirConsola(texto) {
-    const consola = document.getElementById("console");
-    consola.innerHTML += "\\n" + texto;
-    consola.scrollTop = consola.scrollHeight;
+/* cargar ejemplo desde sidebar */
+function cargarEjemplo(i){
+    mostrarTab(i);
+    document.getElementById('code').value = ejemplos[i];
 }
 
-function ejecutarCodigo() {
-    const code = document.getElementById("code").value;
-    const consola = document.getElementById("console");
-    consola.innerHTML = "> Ejecutando código...\\n";
-
-    let url = prompt("🔗 Ingresa la URL del video o playlist:");
-    if (!url) return escribirConsola("Error: no se ingresó ninguna URL.");
-
-    let tipo = prompt("📥 ¿Qué deseas descargar? (musica / video)").toLowerCase();
-    if (tipo !== "musica" && tipo !== "video") return escribirConsola("Formato no válido.");
-
-    let calidad = prompt(`🎚️ Elige calidad para ${tipo}: (baja / media / alta)`);
-
-    escribirConsola(`Procesando descarga desde: ${url}`);
-    escribirConsola(`Tipo: ${tipo.toUpperCase()} | Calidad: ${calidad.toUpperCase()}`);
-    setTimeout(() => escribirConsola("Conectando al servidor..."), 800);
-    setTimeout(() => escribirConsola("Descargando datos..."), 1500);
-    setTimeout(() => escribirConsola("Guardando archivo..."), 2200);
-    setTimeout(() => escribirConsola(" Descarga completada exitosamente."), 3000);
+/* terminal helpers */
+function appendLine(text = "", cls="term-line"){
+    const div = document.createElement('div');
+    div.className = cls;
+    div.textContent = text;
+    termOut.appendChild(div);
+    termOut.scrollTop = termOut.scrollHeight;
 }
+function appendHTML(html){
+    const wrapper = document.createElement('div');
+    wrapper.className = 'term-line';
+    wrapper.innerHTML = html;
+    termOut.appendChild(wrapper);
+    termOut.scrollTop = termOut.scrollHeight;
+}
+function mostrarPrompt(text){
+    appendLine(text);
+}
+function resetTerminal(){
+    termOut.innerHTML = "";
+    termInput.value = "";
+    isRunning = false;
+    state = null;
+}
+
+/* cursor focus */
+termInput.focus();
+termInput.addEventListener('keydown', (e)=> {
+    if (e.key === "Enter") {
+        e.preventDefault();
+        const val = termInput.value.trim();
+        appendLine("> " + val); // eco del usuario
+        termInput.value = "";
+        handleInput(val);
+    }
+});
+
+/* botón ejecutar */
+runBtn.addEventListener('click', () => {
+    if (isRunning) {
+        appendLine("> Ya hay una simulación en curso. Espera a que termine.");
+        return;
+    }
+    resetTerminal();
+    appendLine("> Ejecutando código en pestaña: " + (currentTab===0? "Descarga Simple": currentTab===1? "Playlist": "Formatos y Condiciones"));
+    // inicializar flujo según pestaña
+    if (currentTab === 0) iniciarFlujoSimple();
+    else if (currentTab === 1) iniciarFlujoPlaylist();
+    else iniciarFlujoFormatos();
+});
+
+/* ---------- FLUJO: DESCARGA SIMPLE ---------- */
+function iniciarFlujoSimple(){
+    isRunning = true;
+    state = {flow:"simple", step: "askUrl"};
+    mostrarPrompt("> Ingresa la URL del video:");
+    termInput.focus();
+}
+function handleSimpleInput(val){
+    if (state.step === "askUrl"){
+        if (!val){ appendLine("> Error: URL vacía. Ingresa una URL válida."); return; }
+        state.url = val;
+        // mostrar formatos en columna
+        appendLine("> Elige el formato (escribe el número):");
+        displayOptions(FORMATS);
+        state.step = "askFormat";
+        return;
+    }
+    if (state.step === "askFormat"){
+        const idx = parseInt(val);
+        if (isNaN(idx) || idx < 1 || idx > FORMATS.length){ appendLine("> Opción inválida. Ingresa número entre 1 y " + FORMATS.length); return; }
+        state.format = FORMATS[idx-1];
+        // mostrar calidades según formato
+        const isAudio = state.format === "mp3" || state.format === "flac";
+        appendLine("> Elige la calidad (escribe el número):");
+        displayOptions(isAudio ? AUDIO_QUALS : VIDEO_QUALS);
+        state.step = "askQuality";
+        return;
+    }
+    if (state.step === "askQuality"){
+        const qualList = (state.format === "mp3" || state.format === "flac") ? AUDIO_QUALS : VIDEO_QUALS;
+        const idx = parseInt(val);
+        if (isNaN(idx) || idx < 1 || idx > qualList.length){ appendLine("> Opción inválida. Ingresa número entre 1 y " + qualList.length); return; }
+        state.quality = qualList[idx-1];
+        // simular descarga con retrasos realistas
+        simulateDownloadSingle(state.url, state.format, state.quality, () => {
+            appendLine("> Simulación finalizada. Puedes ejecutar otra simulación.");
+            isRunning = false;
+        });
+        state.step = "downloading";
+        return;
+    }
+}
+
+/* ---------- FLUJO: PLAYLIST ---------- */
+function iniciarFlujoPlaylist(){
+    isRunning = true;
+    state = {flow:"playlist", step:"askUrl"};
+    mostrarPrompt("> Ingresa la URL de la PLAYLIST:");
+    termInput.focus();
+}
+function handlePlaylistInput(val){
+    if (state.step === "askUrl"){
+        if (!val){ appendLine("> Error: URL vacía. Ingresa una URL válida."); return; }
+        state.url = val;
+        // simulamos que detecta 3 videos en la playlist
+        appendLine("> Playlist detectada. Se encontraron los siguientes videos:");
+        appendHTML(renderNumberedList(["01 - Intro","02 - Clase Principal","03 - Bonus"]));
+        appendLine("> ¿Qué quieres hacer? Escribe el número:");
+        appendHTML(renderNumberedList(["Descargar todos","Seleccionar por número (ej: 1,3)"]));
+        state.step = "askAllOrPick";
+        return;
+    }
+    if (state.step === "askAllOrPick"){
+        const idx = parseInt(val);
+        if (idx === 1){
+            state.selected = [1,2,3];
+            appendLine("> Seleccionado: descargar TODOS los videos de la playlist.");
+            askFormatForPlaylist();
+            return;
+        } else if (idx === 2){
+            appendLine("> Ingresa los números separados por comas (ej: 1,3):");
+            state.step = "askPickList";
+            return;
+        } else {
+            appendLine("> Opción inválida. Escribe 1 o 2.");
+            return;
+        }
+    }
+    if (state.step === "askPickList"){
+        // parse list like "1,3"
+        const items = val.split(",").map(x=>parseInt(x.trim())).filter(x=>!isNaN(x) && x>=1 && x<=3);
+        if (items.length === 0){ appendLine("> Entrada inválida. Ejemplo válido: 1,3"); return; }
+        state.selected = [...new Set(items)].sort();
+        appendLine("> Seleccionado videos: " + state.selected.join(", "));
+        askFormatForPlaylist();
+        return;
+    }
+    if (state.step === "askFormat"){
+        const idx = parseInt(val);
+        if (isNaN(idx) || idx<1 || idx>FORMATS.length){ appendLine("> Opción inválida. Ingresa número entre 1 y " + FORMATS.length); return; }
+        state.format = FORMATS[idx-1];
+        const isAudio = state.format === "mp3" || state.format === "flac";
+        appendLine("> Elige calidad:");
+        displayOptions(isAudio ? AUDIO_QUALS : VIDEO_QUALS);
+        state.step = "askQuality";
+        return;
+    }
+    if (state.step === "askQuality"){
+        const qualList = (state.format === "mp3" || state.format === "flac") ? AUDIO_QUALS : VIDEO_QUALS;
+        const idx = parseInt(val);
+        if (isNaN(idx) || idx<1 || idx>qualList.length){ appendLine("> Opción inválida. Ingresa número entre 1 y " + qualList.length); return; }
+        state.quality = qualList[idx-1];
+        // simular descargas secuenciales
+        simulateDownloadPlaylist(state.selected, state.format, state.quality, () => {
+            appendLine("> Playlist simulada finalizada.");
+            isRunning = false;
+        });
+        state.step = "downloading";
+        return;
+    }
+}
+
+function askFormatForPlaylist(){
+    appendLine("> Elige formato para descargar la playlist (escribe el número):");
+    displayOptions(FORMATS);
+    state.step = "askFormat";
+}
+
+/* ---------- FLUJO: FORMATOS Y CONDICIONES ---------- */
+function iniciarFlujoFormatos(){
+    isRunning = true;
+    state = {flow:"formatos", step:"askLinks"};
+    mostrarPrompt("> En este modo puedes simular múltiples enlaces y formatos.");
+    appendLine("> Ingresa la cantidad de enlaces a simular (ej: 2):");
+    termInput.focus();
+}
+function handleFormatosInput(val){
+    if (state.step === "askLinks"){
+        const n = parseInt(val);
+        if (isNaN(n) || n < 1 || n > 10){ appendLine("> Ingresa un número válido (1-10)."); return; }
+        // generar listas simuladas
+        state.links = [];
+        for (let i=1;i<=n;i++) state.links.push({url:`https://youtu.be/simulado${i}`,name:`video${i}`});
+        appendLine("> Enlaces generados:");
+        appendHTML(renderNumberedList(state.links.map((x,i)=> (i+1) + " - " + x.name + " ("+x.url+")")));
+        appendLine("> Elige formato para todos los enlaces (escribe el número):");
+        displayOptions(FORMATS);
+        state.step = "askFormat";
+        return;
+    }
+    if (state.step === "askFormat"){
+        const idx = parseInt(val);
+        if (isNaN(idx) || idx<1 || idx>FORMATS.length){ appendLine("> Opción inválida."); return; }
+        state.format = FORMATS[idx-1];
+        const isAudio = state.format === "mp3" || state.format === "flac";
+        appendLine("> Elige calidad:");
+        displayOptions(isAudio ? AUDIO_QUALS : VIDEO_QUALS);
+        state.step = "askQuality";
+        return;
+    }
+    if (state.step === "askQuality"){
+        const qualList = (state.format === "mp3" || state.format === "flac") ? AUDIO_QUALS : VIDEO_QUALS;
+        const idx = parseInt(val);
+        if (isNaN(idx) || idx<1 || idx>qualList.length){ appendLine("> Opción inválida."); return; }
+        state.quality = qualList[idx-1];
+        simulateDownloadMultipleLinks(state.links, state.format, state.quality, () => {
+            appendLine("> Simulación formatos y condiciones finalizada.");
+            isRunning = false;
+        });
+        state.step = "downloading";
+        return;
+    }
+}
+
+/* ---------- manejador general de entrada ---------- */
+function handleInput(val){
+    if (!isRunning){ appendLine("> No hay ninguna simulación activa. Presiona 'Ejecutar Código' para iniciar."); return; }
+    if (!state || !state.flow){ appendLine("> Estado inválido."); return; }
+
+    if (state.flow === "simple") handleSimpleInput(val);
+    else if (state.flow === "playlist") handlePlaylistInput(val);
+    else if (state.flow === "formatos") handleFormatosInput(val);
+}
+
+/* ---------- util: mostrar opciones enumeradas en columna ---------- */
+function displayOptions(arr){
+    // muestra cada opción en su propia línea con número
+    const html = arr.map((it,i)=> `<div>${i+1}) ${it}</div>`).join("");
+    appendHTML(`<div class="col-list">${html}</div>`);
+}
+
+/* ---------- render numbered list simple ---------- */
+function renderNumberedList(arr){
+    return `<div class="col-list">${arr.map((it,i)=>`<div>${i+1}) ${it}</div>`).join("")}</div>`;
+}
+
+/* ---------- simuladores con retrasos realistas ---------- */
+function simulateDownloadSingle(url, format, quality, cb){
+    appendLine(`> Preparando descarga de: ${url}`);
+    setTimeout(()=> appendLine(`> Verificando disponibilidad...`), 1500);
+    setTimeout(()=> appendLine(`> Iniciando descarga en formato ${format.toUpperCase()} · ${quality}...`), 3500);
+    setTimeout(()=> appendLine(`> Descargando (progreso) ██████░░░ 60%`), 6000);
+    setTimeout(()=> appendLine(`> Finalizando y guardando archivo en la carpeta simulada...`), 9000);
+    setTimeout(()=> { appendLine(`> ✅ Descarga simulada completada: archivo.${format}`); cb(); }, 12000);
+}
+
+function simulateDownloadPlaylist(selectedIndices, format, quality, cb){
+    const total = selectedIndices.length;
+    let i = 0;
+    function next(){
+        if (i >= total){ cb(); return; }
+        const num = selectedIndices[i];
+        appendLine(`> Iniciando descarga del video ${num} de la playlist...`);
+        setTimeout(()=> appendLine(`> Descargando video ${num} (${format} · ${quality})`), 2000);
+        setTimeout(()=> appendLine(`> Guardado: playlist_video${num}.${format}`), 5000);
+        setTimeout(()=> { i++; next(); }, 7000); // avanzar al siguiente tras 7s
+    }
+    next();
+}
+
+function simulateDownloadMultipleLinks(links, format, quality, cb){
+    let i=0;
+    function next(){
+        if (i>=links.length){ cb(); return; }
+        const item = links[i];
+        appendLine(`> Descargando ${item.name} (${item.url}) en ${format} · ${quality}...`);
+        setTimeout(()=> appendLine(`> Progreso: ████░░ 45%`), 2000);
+        setTimeout(()=> appendLine(`> Progreso: ███████░ 85%`), 4500);
+        setTimeout(()=> appendLine(`> Guardado: ${item.name}.${format}`), 7000);
+        setTimeout(()=> { i++; next(); }, 9000);
+    }
+    next();
+}
+
+/* mantener foco y estilo del cursor */
+document.addEventListener('click', ()=> termInput.focus());
 </script>
 
 </body>
