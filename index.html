@@ -304,39 +304,35 @@
 
     <script>
     // ==================================================================
-    // 1. ESTADO Y DATOS INICIALES (SCRIPTS CORREGIDOS)
+    // 1. ESTADO Y DATOS INICIALES (TUS SCRIPTS CORREGIDOS)
     // ==================================================================
     
     const initialFiles = {
         'simple.ytd': 
 `FUNCION main() {
-    VAR link = ' '
-    IMPRIMIR 'Ingresa la URL del video:'
-    LEER link
-    // El ' ' en formato activa el modo interactivo
-    descargar(link, ' ', 'Video1', 'C:/Videos')
+    VAR link = ' ';
+    IMPRIMIR 'Ingresa la URL del video:';
+    LEER link;
+    descargar(link,' ', 'Video1', 'C:/Videos');
 } FIN!`,
         
         'playlist.ytd':
 `FUNCION main() {
-    VAR playlistURL = ' '
-    IMPRIMIR 'Ingresa la URL de la PLAYLIST:'
-    LEER playlistURL
-    // 'descargar' detectará 'playlist' en la URL
-    // y el ' ' activará el modo interactivo en bucle
-    descargar(playlistURL, ' ', 'MiPlaylist', 'C:/Musica')
+    VAR playlistURL = ' ';
+    IMPRIMIR 'Ingresa la URL de la PLAYLIST:';
+    LEER playlistURL;
+    descargar(playlistURL, ' ', 'MiPlaylist', 'C:/Musica');
 } FIN!`,
         
         'formatos.ytd':
 `FUNCION main() {
-    VAR enlaces = ['https://video1.com' AS 'Clase 1', 'https://video2.com' AS 'Proyecto']
-    VAR formato = ' '
-    IMPRIMIR 'Selecciona el formato para el lote (mp3/mp4):'
-    LEER formato
+    VAR enlaces = ['https://video1.com' AS 'Clase 1', 'https://video2.com' AS 'Proyecto'];
+    VAR formato = ' ';
+    IMPRIMIR 'Selecciona el formato para el lote (mp3/mp4):';
+    LEER formato;
     PARA CADA e EN enlaces HACER {
         SI formato ENTONCES {
-            // 'formato' tiene valor, 'descargar' será NO-interactivo
-            descargar(e.url, formato, e.nombre, 'D:/Videos')
+            descargar(e.url, formato, e.nombre, 'D:/Videos');
         }
     } FIN;
 } FIN!`
@@ -366,7 +362,7 @@
     const uploadButton = document.getElementById('upload-button');
 
     // ==================================================================
-    // 3. ANALIZADOR LÉXICO (Fiel a C++)
+    // 3. ANALIZADOR LÉXICO (CON PUNTO Y COMA)
     // ==================================================================
     
     const TokenType = {
@@ -380,7 +376,7 @@
         PAREN_IZQ: '(', PAREN_DER: ')',
         LLAVE_IZQ: '{', LLAVE_DER: '}',
         CORCH_IZQ: '[', CORCH_DER: ']',
-        PUNTO_COMA: ';',
+        PUNTO_COMA: ';', // Ahora es relevante
         COMA: ',',
         ASIGNAR: '=',
         PUNTO: '.',
@@ -556,10 +552,13 @@
         if (match(TokenType.DESCARGAR)) return parseDescargarStatement();
         if (match(TokenType.PARA)) return parseParaCadaStatement();
         if (match(TokenType.SI)) return parseSiStatement();
-        if (match(TokenType.PUNTO_COMA)) { return { type: 'EmptyStatement' }; }
+        // Permitir ; vacíos
+        if (match(TokenType.PUNTO_COMA)) { return { type: 'EmptyStatement' }; } 
         
         throw new Error(parseError(peek(), "Instrucción no reconocida"));
     }
+
+    // --- Parser más estricto con ; ---
 
     function parseVarDeclaration() {
         const name = consume(TokenType.IDENTIFICADOR, "Se esperaba un nombre para la variable").value;
@@ -583,19 +582,19 @@
             throw new Error(parseError(peek(), "Se esperaba un valor (string o array) para la variable"));
         }
         
-        match(TokenType.PUNTO_COMA); 
+        consume(TokenType.PUNTO_COMA, "Se esperaba ';' al final de la declaración VAR"); 
         return { type: 'VarDeclaration', name, initializer };
     }
 
     function parseImprimirStatement() {
         const value = consume(TokenType.STRING, "Se esperaba un string después de 'IMPRIMIR'").value;
-        match(TokenType.PUNTO_COMA);
+        consume(TokenType.PUNTO_COMA, "Se esperaba ';' al final de IMPRIMIR");
         return { type: 'ImprimirStatement', value };
     }
     
     function parseLeerStatement() {
         const variable = consume(TokenType.IDENTIFICADOR, "Se esperaba un nombre de variable después de 'LEER'").value;
-        match(TokenType.PUNTO_COMA);
+        consume(TokenType.PUNTO_COMA, "Se esperaba ';' al final de LEER");
         return { type: 'LeerStatement', variable };
     }
 
@@ -612,7 +611,7 @@
         args.push(parseExpression());
         
         consume(TokenType.PAREN_DER, "Se esperaba ')' después de los argumentos de 'descargar'");
-        match(TokenType.PUNTO_COMA);
+        consume(TokenType.PUNTO_COMA, "Se esperaba ';' al final de descargar");
         
         return { type: 'DescargarStatement', arguments: args };
     }
@@ -695,7 +694,8 @@
             prompt.split('\n').forEach(line => writeToConsole(line, 'line-sim-output'));
             
             const validKeys = Object.keys(options); // Ej: ['1', '2']
-            const regex = new RegExp(`^[${validKeys.join('')}]$`); // Ej: /^[12]$/
+            // Validar solo números que estén en las opciones
+            const regex = new RegExp(`^(${validKeys.join('|')})$`); 
 
             while (true) {
                 // Pedir input en una línea nueva
@@ -756,6 +756,7 @@
                 for(const argNode of astNode.arguments) {
                     args.push(yield* evaluateExpression(argNode, environment));
                 }
+                // Los args evaluados (valores reales)
                 const [url, formato, nombre, ruta] = args;
                 
                 // ---------------------------------------------
@@ -769,7 +770,8 @@
                     }
                     
                     for (let i = 0; i < loopCount; i++) {
-                        if(loopCount > 1) writeToConsole(`--- Video ${i+1} de ${loopCount} (${nombre}) ---`, 'line-warn');
+                        let videoNombre = (loopCount > 1) ? `${nombre}_${i+1}` : nombre;
+                        if(loopCount > 1) writeToConsole(`--- Video ${i+1} de ${loopCount} (${videoNombre}) ---`, 'line-warn');
 
                         // --- Pedir Formato ---
                         const formatoMap = { '1': 'mp3', '2': 'mp4' };
@@ -794,7 +796,7 @@
                             );
                         }
                         
-                        writeToConsole(`> Descargando archivo (${formatoSeleccionado} @ ${calidadSeleccionada})...`, 'line-info');
+                        writeToConsole(`> Descargando '${videoNombre}' (${formatoSeleccionado} @ ${calidadSeleccionada})...`, 'line-info');
                         await sleep(1500);
                         writeToConsole(`> Descarga completada en ${ruta}`, 'line-success');
                     }
@@ -826,7 +828,7 @@
             case 'SiStatement':
                 const conditionValue = environment.get(astNode.condition);
                 if (conditionValue && conditionValue.trim() !== '') { // Chequeo simple
-                    const ifEnv = new Environment(); // 'SI' crea su propio scope (o hereda)
+                    const ifEnv = new Environment(); 
                     ifEnv.variables = new Map(environment.variables);
                     for (const statement of astNode.body) {
                         yield* simulationGenerator(statement, ifEnv);
@@ -849,7 +851,12 @@
                 if (typeof object !== 'object' || object === null) {
                     throw new Error(`Simulación: '${node.object}' no es un objeto.`);
                 }
-                return object[node.property];
+                // Maneja 'video.url' y 'video.nombre'
+                if(node.property === 'url' || node.property === 'nombre') {
+                    return object[node.property];
+                } else {
+                    throw new Error(`Simulación: Propiedad desconocida '${node.property}'.`);
+                }
         }
     }
 
@@ -934,7 +941,7 @@
                 writeToConsole(`> ${currentPromptText} ${input}`, 'line-sim-output');
             } else {
                 // Es un LEER sin prompt (ej: formato, calidad)
-                writeToConsole(`> ${input}`, 'line-sim-output'); // Muestra el '1' o '2'
+                writeToConsole(`> ${input}`, 'line-sim-output'); 
             }
             
             simulationInputResolve(input); 
@@ -972,7 +979,11 @@
         consoleOutput.innerHTML = '';
         writeToConsole(`Iniciando análisis para ${activeFile}...`, 'line-info');
         
-        const lexerResult = analizarLexico(code);
+        // --- Corregir ; faltantes antes de analizar ---
+        // Esto hace que el ; sea "opcional" para el usuario
+        const correctedCode = code.replace(/([^\s;}{])\s*(\n|FIN!)/g, "$1;\n$2");
+
+        const lexerResult = analizarLexico(correctedCode);
         if (lexerResult.error) {
             writeToConsole(lexerResult.error, 'line-error');
             updateStatus('Error Léxico', true);
@@ -1004,23 +1015,33 @@
         if (!currentSimulation) return;
         
         try {
-            const result = await currentSimulation.next();
+            // Un 'next' puede no devolver nada, o puede devolver una promesa
+            let result = currentSimulation.next();
+            if (result.value instanceof Promise) {
+                 result = await result.value;
+            } else {
+                result = result.value; // Para los 'yield' simples
+            }
+
+            // El generador ha terminado
+            if (!result && currentSimulation.done) {
+                 writeToConsole('--- Simulación finalizada ---', 'line-warn');
+                 updateStatus('Simulación completada', false, true);
+                 cancelSimulation();
+                 return;
+            }
             
-            if (result.done) {
-                writeToConsole('--- Simulación finalizada ---', 'line-warn');
-                updateStatus('Simulación completada', false, true);
-                cancelSimulation();
-            } else if (result.value) {
-                if (result.value.type === 'input') {
+            if (result && result.type) {
+                if (result.type === 'input') {
                     // Pausa para LEER
-                    currentInputPrompt = result.value.prompt;
+                    currentInputPrompt = result.prompt;
                     let visualPrompt = (currentInputPrompt.trim() !== "") ? `> ${currentInputPrompt} ` : "> ";
                     setConsoleMode('command', visualPrompt); 
                     await new Promise(resolve => { simulationInputResolve = resolve; });
                 }
-                else if (result.value.type === 'input_prompt_only') {
+                else if (result.type === 'input_prompt_only') {
                      // Solo mostrar prompt (para validación)
-                    currentInputPrompt = result.value.prompt;
+                    currentInputPrompt = result.prompt;
                     let visualPrompt = (currentInputPrompt.trim() !== "") ? `> ${currentInputPrompt} ` : "> ";
                     setConsoleMode('command', visualPrompt); 
                     // No creamos nueva promesa, la anterior sigue activa
@@ -1028,6 +1049,7 @@
             }
             
         } catch (error) {
+            console.error(error); // Log real para debugging
             writeToConsole(`Error de Simulación: ${error.message}`, 'line-error');
             updateStatus('Error en Simulación', true);
             cancelSimulation();
