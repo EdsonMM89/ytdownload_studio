@@ -5,278 +5,151 @@
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>YTDOWNLOAD Studio</title>
 <style>
-  :root {
-    --bg:#0b0b0b; --panel:#121212; --muted:#9aa0a6; --accent:#ff4444; --green:#00ff66;
-  }
-  html,body{height:100%;margin:0;background:var(--bg);color:#e6e6e6;font-family: Consolas,monospace;}
-  header{background:var(--panel);padding:12px 16px;font-weight:700;color:var(--accent);border-bottom:2px solid var(--accent);text-align:center}
-  nav{display:flex;gap:6px;justify-content:center;padding:8px;background:#111;border-bottom:1px solid #222}
-  nav .tab{padding:8px 14px;border-radius:4px;color:#ddd;cursor:pointer;border:1px solid transparent}
-  nav .tab.active{background:#171717;border-color:#333;color:var(--accent)}
+  :root {--bg:#0b0b0b;--panel:#121212;--muted:#9aa0a6;--accent:#ff4444;--green:#00ff66;}
+  html,body{height:100%;margin:0;background:var(--bg);color:#e6e6e6;font-family:Consolas,monospace;}
+  header{background:var(--panel);padding:12px;font-weight:700;color:var(--accent);border-bottom:2px solid var(--accent);text-align:center}
+  nav{display:flex;justify-content:center;gap:6px;padding:8px;background:#111;border-bottom:1px solid #222}
+  nav .tab{padding:8px 14px;border-radius:4px;color:#ddd;cursor:pointer}
+  nav .tab.active{background:#171717;color:var(--accent)}
   main{display:flex;gap:16px;padding:16px;height:calc(100% - 120px);box-sizing:border-box}
-  .editor{flex:1;display:flex;flex-direction:column;gap:8px}
   textarea{flex:1;background:#0e0e0e;border:1px solid #2b2b2b;color:#fff;padding:12px;resize:none;font-size:13px}
-  .run-row{display:flex;gap:8px;align-items:center}
   .run-btn{background:var(--accent);border:none;color:#fff;padding:10px 14px;border-radius:6px;cursor:pointer}
-  .console{background:#000;border:1px solid #222;padding:10px;height:240px;overflow:auto;color:var(--green);font-family:monospace;font-size:13px;position:relative}
-  .console .line{white-space:pre-wrap;margin:2px 0}
-  .input-line{display:flex;align-items:center;gap:8px;margin-top:6px}
-  .prompt{color:var(--green);font-weight:700}
-  .blink{width:8px;height:16px;background:var(--green);display:inline-block;animation:blink 1s steps(1) infinite}
-  @keyframes blink{50%{opacity:0}}
+  .console{background:#000;border:1px solid #222;padding:10px;height:240px;overflow:auto;color:var(--green);font-family:monospace;font-size:13px}
   .sidebar{width:220px;background:#0f0f0f;border:1px solid #222;padding:10px;border-radius:6px}
-  .sidebar h3{color:var(--accent);text-align:center;margin:6px 0}
-  .file{background:#111;padding:8px;margin:6px 0;border-radius:6px;border:1px solid #222;cursor:pointer}
-  .file.upload{display:flex;justify-content:center;align-items:center}
-  .small{font-size:12px;color:var(--muted)}
-  .tokens{background:#071; padding:6px;border-radius:4px;margin-top:6px;color:#001f00}
+  .file{background:#111;padding:8px;margin:6px 0;border-radius:6px;border:1px solid #222;cursor:pointer;text-align:center}
+  .upload{background:#111;text-align:center;cursor:pointer}
   .error{color:#ff6666}
-  footer{padding:8px;text-align:center;color:var(--muted);font-size:12px}
-  @media(max-width:900px){main{flex-direction:column}.sidebar{width:auto}}
 </style>
 </head>
 <body>
 <header>YTDOWNLOAD Studio</header>
-
 <nav id="tabs"></nav>
-
 <main>
-  <div class="editor">
+  <div style="flex:1;display:flex;flex-direction:column;gap:8px;">
     <textarea id="code" spellcheck="false"></textarea>
-    <div class="run-row">
-      <button class="run-btn" id="runBtn">▶ Ejecutar Código</button>
-      <div class="small" id="status">Estado: listo</div>
-    </div>
-    <div class="console" id="console" tabindex="0"></div>
+    <button class="run-btn" id="runBtn">▶ Ejecutar Código</button>
+    <div class="console" id="console"></div>
   </div>
-
   <div class="sidebar">
     <h3>Archivos</h3>
     <div class="file" onclick="loadExample(0)">simple.ytd</div>
     <div class="file" onclick="loadExample(1)">playlist.ytd</div>
     <div class="file" onclick="loadExample(2)">formatos.ytd</div>
-    <hr style="border:none;border-top:1px solid #222;margin:8px 0">
-    <div class="file upload" id="uploadBox"> Subir archivo .txt </div>
+    <hr>
+    <div class="file upload" id="uploadBox">Subir .txt</div>
     <input type="file" id="fileInput" accept=".txt" style="display:none">
-    <div class="small" style="margin-top:10px">Los archivos subidos crean nuevas pestañas editables.</div>
   </div>
 </main>
 
-<footer>Editor / Simulador basado en tu analizador léxico y sintáctico — editable</footer>
-
 <script>
-/* ============================
-   Tokens (añadidos LBRACK,RBRACK,AS)
-   ============================ */
-const TOK = {
-  FUNCION:0, VAR:1, IMPRIMIR:2, LEER:3, DESCARGAR:4, PARA:5, CADA:6, EN:7, HACER:8,
-  SI:9, ENTONCES:10, MIENTRAS:11, FIN:12, MP3:13, MP4:14, CADENA:15, NUM:16,
-  APARENTESIS:17, CPARENTESIS:18, ALLAVE:19, CLLAVE:20, IGUAL:21, COMA:22, PCOMA:23,
-  PUNTO:24, ADMIRACION:25, MAIN:26, WAV:27, MKV:28, AVI:29, WEBM:30, FLAC:31,
-  LBRACK:32, RBRACK:33, AS:34,
-  ERROR:999, FIN_ARCHIVO:666
-};
+const TOK={FUNCION:0,VAR:1,IMPRIMIR:2,LEER:3,DESCARGAR:4,PARA:5,CADA:6,EN:7,HACER:8,SI:9,ENTONCES:10,MIENTRAS:11,FIN:12,MP3:13,MP4:14,CADENA:15,NUM:16,AP:17,CP:18,AL:19,CL:20,IG:21,COM:22,PC:23,PUN:24,ADM:25,MAIN:26,WAV:27,MKV:28,AVI:29,WEBM:30,FLAC:31,LB:32,RB:33,AS:34,ERROR:999,FIN:666};
 
-/* Tabla de símbolos (keywords) */
-class TablaSimbolos {
-  constructor(){ this.tab = new Map(); }
-  insert(lex, token){ this.tab.set(lex.toUpperCase(), {lex, token}); }
-  findKeyword(lex){ return this.tab.get(lex.toUpperCase()) || null; }
+function tsBase(){
+  const k=new Map();
+  for(const [n,t] of Object.entries(TOK)) k.set(n,t);
+  return k;
 }
 
-// construir TS con corchetes y AS
-function buildDefaultTS(){
-  const ts=new TablaSimbolos();
-  ts.insert("FUNCION", TOK.FUNCION);
-  ts.insert("VAR", TOK.VAR);
-  ts.insert("IMPRIMIR", TOK.IMPRIMIR);
-  ts.insert("LEER", TOK.LEER);
-  ts.insert("DESCARGAR", TOK.DESCARGAR);
-  ts.insert("PARA", TOK.PARA);
-  ts.insert("CADA", TOK.CADA);
-  ts.insert("EN", TOK.EN);
-  ts.insert("HACER", TOK.HACER);
-  ts.insert("SI", TOK.SI);
-  ts.insert("ENTONCES", TOK.ENTONCES);
-  ts.insert("MIENTRAS", TOK.MIENTRAS);
-  ts.insert("FIN", TOK.FIN);
-  ts.insert("MAIN", TOK.MAIN);
-  ts.insert("MP3", TOK.MP3);
-  ts.insert("MP4", TOK.MP4);
-  ts.insert("WAV", TOK.WAV);
-  ts.insert("MKV", TOK.MKV);
-  ts.insert("AVI", TOK.AVI);
-  ts.insert("WEBM", TOK.WEBM);
-  ts.insert("FLAC", TOK.FLAC);
-  ts.insert("(", TOK.APARENTESIS);
-  ts.insert(")", TOK.CPARENTESIS);
-  ts.insert("{", TOK.ALLAVE);
-  ts.insert("}", TOK.CLLAVE);
-  ts.insert("=", TOK.IGUAL);
-  ts.insert(",", TOK.COMA);
-  ts.insert(";", TOK.PCOMA);
-  ts.insert(".", TOK.PUNTO);
-  ts.insert("!", TOK.ADMIRACION);
-  // NUEVOS
-  ts.insert("[", TOK.LBRACK);
-  ts.insert("]", TOK.RBRACK);
-  ts.insert("AS", TOK.AS);
-  return ts;
-}
-
-/* ---------------------------
-   LEXER traducido a JS (mejorado)
-   --------------------------- */
-class Lexer {
-  constructor(input){
-    this.ts = buildDefaultTS();
-    this.src = input || "";
-    this.i = 0;
-    this.len = this.src.length;
-    this.numero = ""; this.variable = ""; this.cadena = "";
-    this.lastPos = 0;
-  }
-  isElement(c){ return "(){}=,;.!'[]".includes(c); } // añadidos corchetes
-  skipWS(){ while(this.i < this.len && /\s/.test(this.src[this.i])) this.i++; }
-  peek(n=0){ return this.src[this.i + n] || '\0'; }
-  getToken(){
-    this.lastPos = this.i;
-    this.skipWS();
-    if(this.i >= this.len) return TOK.FIN_ARCHIVO;
-    const c = this.src[this.i];
-    // letras/identificadores/keywords (incluye AS)
+class Lexer{
+  constructor(s){this.s=s;this.i=0;this.len=s.length;}
+  isElem(c){return"(){}=,;.![]".includes(c);}
+  skip(){while(this.i<this.len&&/\s/.test(this.s[this.i]))this.i++;}
+  get(){
+    this.skip();if(this.i>=this.len)return TOK.FIN;
+    let c=this.s[this.i];
     if(/[A-Za-z]/.test(c)){
       let tmp="";
-      while(this.i < this.len && /[A-Za-z0-9_]/.test(this.src[this.i])) tmp+=this.src[this.i++];
-      const kw = this.ts.findKeyword(tmp);
-      if(kw) return kw.token;
-      this.variable = tmp;
+      while(this.i<this.len&&/[A-Za-z0-9_]/.test(this.s[this.i]))tmp+=this.s[this.i++];
+      const up=tmp.toUpperCase();
+      if(TOK[up]!=null)return TOK[up];
       return TOK.VAR;
     }
-    // numeros
     if(/[0-9]/.test(c)){
-      let tmp="";
-      while(this.i < this.len && (/[0-9.]/.test(this.src[this.i]))) tmp+=this.src[this.i++];
-      this.numero = tmp; return TOK.NUM;
+      while(this.i<this.len&&/[0-9.]/.test(this.s[this.i]))this.i++;
+      return TOK.NUM;
     }
-    // cadenas entre comillas simples (acepta comilla ASCII ')
-    if(c === "'"){
-      this.i++;
-      let tmp="";
-      while(this.i < this.len && this.src[this.i] !== "'"){ tmp+=this.src[this.i++]; }
-      if(this.src[this.i]==="'") this.i++;
-      this.cadena = tmp;
-      return TOK.CADENA;
-    }
-    // elementos/puntuación: incluyen corchetes
-    if(this.isElement(c)){
-      const lex = c;
-      this.i++;
-      const kw = this.ts.findKeyword(lex);
-      if(kw) return kw.token;
-      if(lex === '.') return TOK.PUNTO;
-      if(lex === '[') return TOK.LBRACK;
-      if(lex === ']') return TOK.RBRACK;
-      return TOK.ERROR;
-    }
-    // si encontramos comillas “inteligentes” u otros caracteres unicode, los rechazamos con ERROR
-    this.i++;
-    return TOK.ERROR;
+    if(c=="'"){this.i++;while(this.i<this.len&&this.s[this.i]!="'")this.i++;this.i++;return TOK.CADENA;}
+    if(this.isElem(c)){this.i++;const map={'(':TOK.AP,')':TOK.CP,'{':TOK.AL,'}':TOK.CL,'=':TOK.IG,',':TOK.COM,';':TOK.PC,'.':TOK.PUN,'!':TOK.ADM,'[':TOK.LB,']':TOK.RB};return map[c]??TOK.ERROR;}
+    this.i++;return TOK.ERROR;
   }
-  tokenizeAll(){
-    this.i=0; this.variable=""; this.numero=""; this.cadena="";
-    const tokens=[];
+  tokenize(){const t=[];while(true){let x=this.get();t.push(x);if(x===TOK.FIN||x===TOK.ERROR)break;}return t;}
+}
+
+class Parser{
+  constructor(tok){this.t=tok;this.p=0;this.e=0;this.fin=50;this.err=TOK.ERROR;
+    this.tab=Array.from({length:60},()=>Array(60).fill(this.err));
+    // agregamos soporte a LISTAS
+    this.tab[0][TOK.FUNCION]=1;
+    this.tab[1][TOK.MAIN]=2;
+    this.tab[2][TOK.AP]=3;
+    this.tab[3][TOK.CP]=4;
+    this.tab[4][TOK.AL]=5;
+    this.tab[5][TOK.VAR]=6;
+    this.tab[6][TOK.VAR]=7;
+    this.tab[7][TOK.IG]=8;
+    // aquí admitimos o CADENA o LB
+    this.tab[8][TOK.CADENA]=9;
+    this.tab[8][TOK.LB]=60; // lista
+    this.tab[9][TOK.PC]=10;
+    // LISTA: [ CADENA AS CADENA (, ...)? ]
+    this.tab[60][TOK.CADENA]=61;
+    this.tab[61][TOK.AS]=62;
+    this.tab[62][TOK.CADENA]=63;
+    this.tab[63][TOK.COM]=60; // repetir
+    this.tab[63][TOK.RB]=9;   // cerrar lista → ir a 9 (como si fuera cadena)
+    // resto igual
+    this.tab[10][TOK.IMPRIMIR]=11;
+    this.tab[11][TOK.CADENA]=12;
+    this.tab[12][TOK.PC]=13;
+    this.tab[13][TOK.LEER]=14;
+    this.tab[14][TOK.VAR]=15;
+    this.tab[15][TOK.PC]=16;
+    this.tab[16][TOK.PARA]=17;
+    this.tab[17][TOK.CADA]=18;
+    this.tab[18][TOK.VAR]=19;
+    this.tab[19][TOK.EN]=20;
+    this.tab[20][TOK.VAR]=21;
+    this.tab[21][TOK.HACER]=22;
+    this.tab[22][TOK.AL]=23;
+    this.tab[23][TOK.DESCARGAR]=24;
+    this.tab[24][TOK.AP]=25;
+    this.tab[25][TOK.VAR]=26;
+    this.tab[26][TOK.PUN]=27;
+    this.tab[27][TOK.VAR]=28;
+    this.tab[28][TOK.COM]=29;
+    this.tab[29][TOK.MP3]=30;
+    this.tab[30][TOK.COM]=31;
+    this.tab[31][TOK.VAR]=32;
+    this.tab[32][TOK.PUN]=33;
+    this.tab[33][TOK.VAR]=34;
+    this.tab[34][TOK.COM]=35;
+    this.tab[35][TOK.CADENA]=36;
+    this.tab[36][TOK.CP]=37;
+    this.tab[37][TOK.PC]=38;
+    this.tab[38][TOK.CL]=39;
+    this.tab[39][TOK.FIN]=40;
+    this.tab[40][TOK.PC]=41;
+    this.tab[41][TOK.CL]=42;
+    this.tab[42][TOK.FIN]=43;
+    this.tab[43][TOK.ADM]=44;
+    this.fin=44;
+  }
+  nxt(){return this.t[this.p++]??TOK.FIN;}
+  run(){
+    this.e=0;
     while(true){
-      const t = this.getToken();
-      tokens.push(t);
-      if(t === TOK.ERROR) break;
-      if(t === TOK.FIN_ARCHIVO) break;
+      let tk=this.nxt();
+      if(tk===TOK.FIN)break;
+      let nx=this.tab[this.e][tk];
+      if(nx===this.err)return{ok:false,estado:this.e,token:tk,pos:this.p-1};
+      this.e=nx;
+      if(this.e===this.fin)return{ok:true};
     }
-    return tokens;
+    return{ok:false,estado:this.e};
   }
 }
 
-/* ---------------------------
-   PARSER / AUTÓMATA (tabla)
-   --------------------------- */
-class Parser {
-  constructor(tokens){
-    this.tokens = tokens;
-    this.pos = 0;
-    this.estado = 0;
-    this.ERROR = TOK.ERROR;
-    this.t = Array.from({length:50},()=>Array(50).fill(this.ERROR));
-    this.t[0][TOK.FUNCION]=1;
-    this.t[1][TOK.MAIN]=2;
-    this.t[2][TOK.APARENTESIS]=3;
-    this.t[3][TOK.CPARENTESIS]=4;
-    this.t[4][TOK.ALLAVE]=5;
-    this.t[5][TOK.VAR]=6;
-    this.t[6][TOK.VAR]=7;
-    this.t[7][TOK.IGUAL]=8;
-    this.t[8][TOK.CADENA]=9;
-    this.t[9][TOK.PCOMA]=10;
-    this.t[10][TOK.IMPRIMIR]=11;
-    this.t[11][TOK.CADENA]=12;
-    this.t[12][TOK.PCOMA]=13;
-    this.t[13][TOK.LEER]=14;
-    this.t[14][TOK.VAR]=15;
-    this.t[15][TOK.PCOMA]=16;
-    this.t[16][TOK.PARA]=17;
-    this.t[17][TOK.CADA]=18;
-    this.t[18][TOK.VAR]=19;
-    this.t[19][TOK.EN]=20;
-    this.t[20][TOK.VAR]=21;
-    this.t[21][TOK.HACER]=22;
-    this.t[22][TOK.ALLAVE]=23;
-    this.t[23][TOK.DESCARGAR]=24;
-    this.t[24][TOK.APARENTESIS]=25;
-    this.t[25][TOK.VAR]=26;
-    this.t[26][TOK.PUNTO]=27;
-    this.t[27][TOK.VAR]=28;
-    this.t[28][TOK.COMA]=29;
-    this.t[29][TOK.MP3]=30;
-    this.t[30][TOK.COMA]=31;
-    this.t[31][TOK.VAR]=32;
-    this.t[32][TOK.PUNTO]=33;
-    this.t[33][TOK.VAR]=34;
-    this.t[34][TOK.COMA]=35;
-    this.t[35][TOK.CADENA]=36;
-    this.t[36][TOK.CPARENTESIS]=37;
-    this.t[37][TOK.PCOMA]=38;
-    this.t[38][TOK.CLLAVE]=39;
-    this.t[39][TOK.FIN]=40;
-    this.t[40][TOK.PCOMA]=41;
-    this.t[41][TOK.CLLAVE]=42;
-    this.t[42][TOK.FIN]=43;
-    this.t[43][TOK.ADMIRACION]=44;
-    this.final = 44;
-  }
-
-  nextToken(){ return this.tokens[this.pos++] ?? TOK.FIN_ARCHIVO; }
-
-  run(traceCb){
-    this.pos=0; this.estado=0;
-    let tok;
-    while(true){
-      tok = this.nextToken();
-      if(traceCb) traceCb(tok,this.estado);
-      if(tok === TOK.FIN_ARCHIVO) break;
-      const next = this.t[this.estado][tok];
-      if(next === this.ERROR) {
-        return {ok:false, estado:this.estado, token:tok, pos:this.pos-1};
-      }
-      this.estado = next;
-      if(this.estado === this.final) return {ok:true};
-    }
-    return {ok:false, estado:this.estado, reason:"EOF inesperado"};
-  }
-}
-
-/* ---------------------------
-   UI + Simulador (igual)
-   --------------------------- */
-const examples = [
+const examples=[
 `FUNCION main() {
     VAR link = '';
     IMPRIMIR 'Ingresa la URL del video:';
@@ -304,232 +177,43 @@ const examples = [
 } FIN!`
 ];
 
-let tabs = [];
-const tabsEl = document.getElementById('tabs');
-const codeEl = document.getElementById('code');
-const consoleEl = document.getElementById('console');
-const statusEl = document.getElementById('status');
-const fileInput = document.getElementById('fileInput');
-
-function addTab(title, content){
-  const id = 't'+(tabs.length);
-  tabs.push({id,title,content});
-  renderTabs();
-  selectTab(tabs.length-1);
-}
-function renderTabs(){
-  tabsEl.innerHTML = '';
+let tabs=[],cur=0;
+function addTab(n,c){tabs.push({n,c});render();}
+function render(){
+  const el=document.getElementById("tabs");
+  el.innerHTML="";
   tabs.forEach((t,i)=>{
-    const btn = document.createElement('div');
-    btn.className='tab'+(i===currentTab? ' active':'');
-    btn.innerText=t.title;
-    btn.onclick = ()=> selectTab(i);
-    tabsEl.appendChild(btn);
+    const b=document.createElement("div");
+    b.className="tab"+(i===cur?" active":"");
+    b.textContent=t.n;
+    b.onclick=()=>{cur=i;document.getElementById("code").value=t.c;};
+    el.appendChild(b);
   });
 }
+function loadExample(i){addTab(["Simple","Playlist","Formatos"][i],examples[i]);}
 
-let currentTab = 0;
-function selectTab(idx){
-  currentTab = idx;
-  renderTabs();
-  codeEl.value = tabs[idx].content;
-  clearConsole();
-  appendConsole("> Pestaña: " + tabs[idx].title);
-}
-function loadExample(i){ addTab(['Simple','Playlist','Formatos'][i], examples[i]); }
+loadExample(0);loadExample(1);loadExample(2);
 
-document.getElementById('uploadBox').onclick = ()=> fileInput.click();
-fileInput.addEventListener('change',(ev)=>{
-  const f = ev.target.files[0];
-  if(!f) return;
-  if(!f.name.endsWith('.txt')) { appendConsole("[Error] solo .txt"); return; }
-  const reader=new FileReader();
-  reader.onload = (e)=>{
-    addTab(f.name, e.target.result);
-    appendConsole(`> Archivo cargado: ${f.name}`);
-  };
-  reader.readAsText(f);
-});
+document.getElementById("code").value=tabs[0].c;
 
-loadExample(0); loadExample(1); loadExample(2);
+document.getElementById("runBtn").onclick=()=>{
+  const src=document.getElementById("code").value;
+  const lex=new Lexer(src);const tk=lex.tokenize();
+  const cons=document.getElementById("console");cons.innerHTML="";
+  for(let i=0;i<tk.length;i++){cons.innerHTML+=tokenName(tk[i])+" ";}
+  const p=new Parser(tk);const r=p.run();
+  cons.innerHTML+="\n\n"+(r.ok?"✅ Sintaxis correcta":"❌ Error en estado "+r.estado+" token "+tokenName(r.token));
+};
 
-function clearConsole(){ consoleEl.innerHTML=''; }
-function appendConsole(text, cls){
-  const d = document.createElement('div'); d.className='line '+(cls||''); d.innerText = typeof text==='string' ? text : JSON.stringify(text);
-  consoleEl.appendChild(d); consoleEl.scrollTop = consoleEl.scrollHeight;
-}
+function tokenName(t){for(const k in TOK)if(TOK[k]===t)return k;return t;}
 
-function createConsolePrompt(){
-  return new Promise(resolve=>{
-    const row = document.createElement('div'); row.className='input-line';
-    const pr = document.createElement('span'); pr.className='prompt'; pr.innerText='> ';
-    const input = document.createElement('input'); input.style.background='black'; input.style.color='#00ff66';
-    input.style.border='none'; input.style.outline='none'; input.style.flex='1'; input.autofocus=true;
-    const blink = document.createElement('span'); blink.className='blink';
-    row.appendChild(pr); row.appendChild(input); row.appendChild(blink);
-    consoleEl.appendChild(row); consoleEl.scrollTop = consoleEl.scrollHeight;
-    input.focus();
-    input.addEventListener('keydown',(e)=>{
-      if(e.key === 'Enter'){
-        const v = input.value.trim();
-        row.remove();
-        appendConsole('> ' + v);
-        resolve(v);
-      }
-    });
-  });
-}
-
-async function ejecutar(){
-  clearConsole();
-  appendConsole("> Iniciando análisis léxico...");
-  const src = codeEl.value;
-  const lexer = new Lexer(src);
-  const tokens = lexer.tokenizeAll();
-
-  appendConsole("Tokens detectados:");
-  for(let i=0;i<tokens.length;i++){
-    const t=tokens[i];
-    appendConsole(` ${i+1}. ${tokenName(t)}`);
-    if(t===TOK.ERROR){
-      appendConsole(`[Error léxico] caracter no reconocido cerca de la posición ${lexer.lastPos}`, 'error');
-      statusEl.innerText='Estado: error léxico';
-      return;
-    }
-  }
-
-  appendConsole("> Análisis léxico correcto.");
-  appendConsole("> Ejecutando análisis sintáctico (autómata)...");
-  const parser = new Parser(tokens);
-  let trace = [];
-  const res = parser.run((tok,estado)=>{ trace.push({tok,estado}); });
-  if(!res.ok){
-    appendConsole(`[Error sintáctico] estado ${res.estado} token ${tokenName(res.token)} (pos ${res.pos})`, 'error');
-    statusEl.innerText='Estado: error sintáctico';
-    return;
-  }
-  appendConsole("> Análisis sintáctico correcto. Estado final válido.");
-  statusEl.innerText='Estado: OK';
-
-  const content = src.toUpperCase();
-  let mode='simple';
-  if(content.includes('PARA CADA') || content.includes('PLAYLIST')) mode='playlist';
-  else if(content.includes('ENLACES') || content.includes(" AS ")) mode='formatos';
-  const tabTitle = tabs[currentTab].title.toLowerCase();
-  if(tabTitle.includes('playlist')) mode='playlist';
-  if(tabTitle.includes('format')) mode='formatos';
-
-  appendConsole(`> Iniciando simulador: ${mode}`);
-
-  if(mode==='simple') await runSimple();
-  else if(mode==='playlist') await runPlaylist();
-  else await runFormatos();
-}
-
-function tokenName(t){
-  for(const k in TOK) if(TOK[k]===t) return k;
-  return String(t);
-}
-
-function wait(ms){ return new Promise(r=>setTimeout(r,ms)); }
-
-async function runSimple(){
-  appendConsole("Solicitando URL...");
-  const url = await createConsolePrompt();
-  if(!url){ appendConsole("URL vacía. Abortando.",'error'); return; }
-  appendConsole("Selecciona formato:");
-  const formatos = ['mp4','mkv','avi','mov','wmv','flv'];
-  formatos.forEach((f,i)=> appendConsole(`  ${i+1}. ${f}`));
-  appendConsole("Ingresa número de opción:");
-  const opt = await createConsolePrompt();
-  const iopt = parseInt(opt)||1;
-  const fmt = formatos[iopt-1] || formatos[0];
-  appendConsole(`Formato: ${fmt}`);
-  appendConsole("Elige calidad:");
-  const cal = ['144p','360p','720p','1080p','2K','4K'];
-  cal.forEach((c,i)=> appendConsole(`  ${i+1}. ${c}`));
-  appendConsole("Ingresa número de opción:");
-  const q = await createConsolePrompt();
-  const qn = parseInt(q)||3;
-  const calidad = cal[(qn-1)>=0? (qn-1):2];
-  appendConsole(`Preparando descarga: ${url} -> ${fmt} (${calidad})`);
-  await wait(900);
-  appendConsole("Conectando a servidor...");
-  await wait(900);
-  appendConsole("Obteniendo información del stream...");
-  await wait(1100);
-  appendConsole("Iniciando descarga de fragmentos...");
-  await wait(1400);
-  appendConsole("Guardando archivo en C:/Videos ...");
-  await wait(900);
-  appendConsole("✅ Descarga completada.");
-}
-
-async function runPlaylist(){
-  appendConsole("Solicitando URL de playlist...");
-  const url = await createConsolePrompt();
-  if(!url){ appendConsole("URL vacía. Abortando.",'error'); return; }
-  appendConsole("Analizando playlist...");
-  await wait(900);
-  appendConsole("Playlist detectada: 5 items.");
-  appendConsole("Selecciona formato:");
-  const formatos = ['mp3','mp4'];
-  formatos.forEach((f,i)=> appendConsole(`  ${i+1}. ${f}`));
-  const opt = await createConsolePrompt();
-  const iopt = parseInt(opt)||1;
-  const fmt = formatos[iopt-1] || formatos[0];
-  appendConsole(`Descargando ${fmt}...`);
-  for(let i=1;i<=5;i++){
-    appendConsole(` Iniciando item ${i}...`);
-    await wait(700 + Math.random()*900);
-    appendConsole(` Procesando item ${i}...`);
-    await wait(800 + Math.random()*900);
-    appendConsole(` Guardando: video${i}.${fmt}`);
-    await wait(500);
-  }
-  appendConsole("✅ Playlist descargada correctamente en C:/Musica/Playlist");
-}
-
-async function runFormatos(){
-  appendConsole("Detectando enlaces en código...");
-  await wait(700);
-  const text = codeEl.value;
-  const matchs = [...text.matchAll(/'(https?:\/\/[^']+)'\\s*AS\\s*'([^']+)'/ig)];
-  let links = [];
-  if(matchs.length>0){
-    links = matchs.map(m=>({url:m[1],name:m[2]}));
-  } else {
-    links = [{url:'https://youtu.be/v001', name:'edits'},{url:'https://youtu.be/v002',name:'Clase1'}];
-  }
-  appendConsole(`Enlaces detectados: ${links.length}`);
-  appendConsole("Selecciona formato:");
-  const formatos = ['mp3','mp4','mkv','flv'];
-  formatos.forEach((f,i)=> appendConsole(`  ${i+1}. ${f}`));
-  const opt = await createConsolePrompt();
-  const iopt = parseInt(opt)||1;
-  const fmt = formatos[iopt-1] || formatos[0];
-  appendConsole(`Descargando en ${fmt}...`);
-  for(let l of links){
-    appendConsole(` Procesando ${l.name} ...`);
-    await wait(900);
-    appendConsole(` Descargando ${l.name}.${fmt}`);
-    await wait(1100);
-    appendConsole(` Guardando en D:/Videos/${l.name}.${fmt}`);
-    await wait(500);
-  }
-  appendConsole("✅ Descarga por formato completada.");
-}
-
-document.getElementById('runBtn').addEventListener('click', async ()=>{
-  tabs[currentTab].content = codeEl.value;
-  statusEl.innerText = 'Estado: analizando...';
-  await ejecutar();
-});
-
-codeEl.addEventListener('input', ()=> { tabs[currentTab].content = codeEl.value; });
-
-appendConsole("> Bienvenido a YTDOWNLOAD Studio.");
-appendConsole("> Selecciona una pestaña o sube un .txt para editar.");
+document.getElementById("uploadBox").onclick=()=>document.getElementById("fileInput").click();
+document.getElementById("fileInput").onchange=e=>{
+  const f=e.target.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=x=>{addTab(f.name,x.target.result);document.getElementById("code").value=x.target.result;};
+  r.readAsText(f);
+};
 </script>
 </body>
 </html>
