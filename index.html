@@ -143,10 +143,10 @@
         
         /* Clases de líneas de la consola */
         #console-output .line { margin-bottom: 5px; }
-        #console-output .line-error { color: var(--color-rojo); }
+        #console-output .line-error { color: var(--color-rojo); font-weight: bold; }
         #console-output .line-success { color: var(--color-verde); font-weight: bold; }
         #console-output .line-info { color: var(--color-azul); font-weight: bold; }
-        #console-output .line-warn { color: var(--color-amarillo); }
+        #console-output .line-warn { color: var(--color-amarillo); font-weight: bold; }
         #console-output .line-cmd { color: var(--color-texto-secundario); }
         #console-output .line-sim-output { color: var(--color-texto); }
         #console-output .line-sim-prompt { display: none; }
@@ -304,38 +304,39 @@
 
     <script>
     // ==================================================================
-    // 1. ESTADO Y DATOS INICIALES
+    // 1. ESTADO Y DATOS INICIALES (SCRIPTS CORREGIDOS)
     // ==================================================================
     
-    // Contenido de los archivos base (USANDO TU SCRIPT ORIGINAL)
     const initialFiles = {
         'simple.ytd': 
 `FUNCION main() {
     VAR link = ' '
     IMPRIMIR 'Ingresa la URL del video:'
     LEER link
-    descargar(link,' ', 'Video1', 'C:/Videos')
+    // El ' ' en formato activa el modo interactivo
+    descargar(link, ' ', 'Video1', 'C:/Videos')
 } FIN!`,
         
         'playlist.ytd':
 `FUNCION main() {
-    VAR playlist = ''
+    VAR playlistURL = ' '
     IMPRIMIR 'Ingresa la URL de la PLAYLIST:'
-    LEER playlist
-    PARA CADA video EN playlist HACER {
-        descargar(video.url, mp3, video.nombre, 'C:/Musica/Playlist')
-    } FIN;
+    LEER playlistURL
+    // 'descargar' detectará 'playlist' en la URL
+    // y el ' ' activará el modo interactivo en bucle
+    descargar(playlistURL, ' ', 'MiPlaylist', 'C:/Musica')
 } FIN!`,
         
         'formatos.ytd':
 `FUNCION main() {
-    VAR enlaces = ['https://youtu.be/v001' AS 'edits', 'https://youtu.be/v002' AS 'Clase1']
-    VAR formato = ''
-    IMPRIMIR 'Selecciona el formato: (mp3/mp4/mkv)'
+    VAR enlaces = ['https://video1.com' AS 'Clase 1', 'https://video2.com' AS 'Proyecto']
+    VAR formato = ' '
+    IMPRIMIR 'Selecciona el formato para el lote (mp3/mp4):'
     LEER formato
     PARA CADA e EN enlaces HACER {
         SI formato ENTONCES {
-            descargar(e.url, mp4, e.nombre, 'D:/Videos')
+            // 'formato' tiene valor, 'descargar' será NO-interactivo
+            descargar(e.url, formato, e.nombre, 'D:/Videos')
         }
     } FIN;
 } FIN!`
@@ -345,9 +346,9 @@
     let tabData = { ...initialFiles };
     let activeFile = 'simple.ytd';
     let consoleMode = 'command'; // 'command' | 'simulation' | 'idle'
-    let currentSimulation = null; // Almacenará el generador de simulación
-    let simulationInputResolve = null; // Función para resolver la promesa de LEER
-    let currentInputPrompt = ""; // Almacena el prompt actual de LEER
+    let currentSimulation = null; 
+    let simulationInputResolve = null; 
+    let currentInputPrompt = ""; 
 
     // ==================================================================
     // 2. ELEMENTOS DEL DOM
@@ -685,7 +686,32 @@
 
     // ***** SIMULADOR CON LÓGICA MEJORADA *****
     async function* simulationGenerator(astNode, environment) {
-        if (!astNode) yield; // Ignorar nodos nulos (ej. EmptyStatement)
+        if (!astNode) yield; // Ignorar nodos nulos
+        
+        // --- Helper de simulación para pedir input validado ---
+        async function* askForInput(prompt, options) {
+            let input;
+            // Imprimir el prompt (multilínea)
+            prompt.split('\n').forEach(line => writeToConsole(line, 'line-sim-output'));
+            
+            const validKeys = Object.keys(options); // Ej: ['1', '2']
+            const regex = new RegExp(`^[${validKeys.join('')}]$`); // Ej: /^[12]$/
+
+            while (true) {
+                // Pedir input en una línea nueva
+                input = yield { type: 'input', prompt: "" }; 
+                
+                if (regex.test(input)) {
+                    return options[input]; // Devuelve el VALOR, ej: 'mp3'
+                } else {
+                    writeToConsole(`> Opción no válida. Intente de nuevo.`, 'line-error');
+                    // Volver a mostrar el prompt de input (>)
+                    yield { type: 'input_prompt_only', prompt: "" };
+                }
+            }
+        }
+        // --- Fin del Helper ---
+
         
         switch (astNode.type) {
             case 'Program':
@@ -708,57 +734,82 @@
                 writeToConsole(astNode.value, 'line-sim-output');
                 break;
 
-            // ***** LÓGICA DE LEER MEJORADA *****
             case 'LeerStatement':
                 let lastLineText = "";
                 if (consoleOutput.lastChild && consoleOutput.lastChild.classList.contains('line-sim-output')) {
                     lastLineText = consoleOutput.lastChild.textContent;
-                    // Borrar esa línea de 'IMPRIMIR' para que 'LEER' la reemplace
                     consoleOutput.removeChild(consoleOutput.lastChild);
                 }
                 
-                const input = yield { type: 'input', prompt: lastLineText }; // Señal de pausa
+                const input = yield { type: 'input', prompt: lastLineText }; 
                 
-                // Asignar el valor (handleConsoleKeyDown se encarga de imprimirlo)
                 environment.assign(astNode.variable, input);
 
-                // IMPRIMIR 'URL RECIBIDA' AUTOMÁTICAMENTE
-                if (lastLineText.includes('URL del video')) {
+                if (lastLineText.includes('URL')) {
                     writeToConsole(`> URL recibida.`, 'line-info');
                 }
                 break;
             
             // ***** LÓGICA DE DESCARGAR MEJORADA (INTERACTIVA) *****
             case 'DescargarStatement':
-                // 1. Evaluar los args del script (solo para 'nombre' y 'ruta')
                 const args = [];
                 for(const argNode of astNode.arguments) {
                     args.push(yield* evaluateExpression(argNode, environment));
                 }
-                const [url, formatoOriginal, nombre, ruta] = args;
+                const [url, formato, nombre, ruta] = args;
                 
-                // 2. Iniciar flujo interactivo (Ignoramos 'formatoOriginal')
+                // ---------------------------------------------
+                // MODO 1: INTERACTIVO (formato está vacío)
+                // ---------------------------------------------
+                if (formato.trim() === '') {
+                    // Simular detección de playlist
+                    let loopCount = (url.toLowerCase().includes('playlist')) ? 3 : 1;
+                    if (loopCount > 1) {
+                         writeToConsole(`> Playlist detectada. Simulando descarga de ${loopCount} videos...`, 'line-info');
+                    }
+                    
+                    for (let i = 0; i < loopCount; i++) {
+                        if(loopCount > 1) writeToConsole(`--- Video ${i+1} de ${loopCount} (${nombre}) ---`, 'line-warn');
 
-                // --- Pedir Formato ---
-                const formatPrompt = `> Seleccione formato:\n1. mp3\n2. mp4\n3. wav\n4. mkv\n5. avi\n6. flac`;
-                writeToConsole(formatPrompt, 'line-sim-output');
-                // Pedimos un input SIN prompt, para que se escriba en una línea nueva
-                const formatoInput = yield { type: 'input', prompt: "" }; 
-                
-                // --- Pedir Calidad ---
-                const calidadPrompt = `> Seleccione calidad:\n1. 144p\n2. 360p\n3. 720p\n4. 1080p`;
-                writeToConsole(calidadPrompt, 'line-sim-output');
-                // Pedimos otro input SIN prompt
-                const calidadInput = yield { type: 'input', prompt: "" }; 
-                
-                // 3. Simular Descarga
-                writeToConsole(`> Descargando archivo...`, 'line-info');
-                await sleep(1500 + Math.random() * 1000); 
-                writeToConsole(`> Descarga completada.`, 'line-success');
+                        // --- Pedir Formato ---
+                        const formatoMap = { '1': 'mp3', '2': 'mp4' };
+                        const formatoSeleccionado = yield* askForInput(
+                            '> Seleccione formato:\n1. mp3\n2. mp4',
+                            formatoMap
+                        ); // Devuelve 'mp3' o 'mp4'
+
+                        // --- Lógica Condicional (MP3 vs MP4) ---
+                        let calidadSeleccionada;
+                        if (formatoSeleccionado === 'mp3') {
+                            const calidadMp3Map = { '1': '128kbps', '2': '320kbps' };
+                            calidadSeleccionada = yield* askForInput(
+                                '> Seleccione calidad de audio:\n1. 128kbps (Estándar)\n2. 320kbps (Alta Calidad)',
+                                calidadMp3Map
+                            );
+                        } else { // mp4
+                            const calidadMp4Map = { '1': '360p', '2': '720p', '3': '1080p' };
+                            calidadSeleccionada = yield* askForInput(
+                                '> Seleccione calidad de video:\n1. 360p (Baja)\n2. 720p (HD)\n3. 1080p (Full HD)',
+                                calidadMp4Map
+                            );
+                        }
+                        
+                        writeToConsole(`> Descargando archivo (${formatoSeleccionado} @ ${calidadSeleccionada})...`, 'line-info');
+                        await sleep(1500);
+                        writeToConsole(`> Descarga completada en ${ruta}`, 'line-success');
+                    }
+
+                // ---------------------------------------------
+                // MODO 2: BATCH (formato tiene un valor)
+                // ---------------------------------------------
+                } else {
+                    writeToConsole(`> Descargando (lote) '${nombre}.${formato}'...`, 'line-info');
+                    await sleep(1000); // Simulación más rápida para lotes
+                    writeToConsole(`> Descarga completada en ${ruta}`, 'line-success');
+                }
                 break;
 
             case 'ParaCadaStatement':
-                // (Esta lógica sigue igual, pero 'descargar' ahora sería interactivo también)
                 const array = environment.get(astNode.arrayVar);
                 if (!Array.isArray(array)) {
                     throw new Error(`Simulación: '${astNode.arrayVar}' no es un array (en PARA CADA).`);
@@ -774,9 +825,11 @@
                 break;
             case 'SiStatement':
                 const conditionValue = environment.get(astNode.condition);
-                if (conditionValue) {
+                if (conditionValue && conditionValue.trim() !== '') { // Chequeo simple
+                    const ifEnv = new Environment(); // 'SI' crea su propio scope (o hereda)
+                    ifEnv.variables = new Map(environment.variables);
                     for (const statement of astNode.body) {
-                        yield* simulationGenerator(statement, environment);
+                        yield* simulationGenerator(statement, ifEnv);
                     }
                 }
                 break;
@@ -865,7 +918,6 @@
         tabData[activeFile] = editor.value;
     }
 
-    // ***** MANEJADOR DE INPUT MEJORADO *****
     async function handleConsoleKeyDown(e) {
         if (e.key !== 'Enter') return;
         
@@ -877,17 +929,13 @@
             const currentPromptText = currentInputPrompt;
             setConsoleMode('simulation'); // Poner en modo 'procesando'
             
-            // --- LÓGICA DE IMPRESIÓN MEJORADA ---
             if (currentPromptText.trim() !== "") {
                 // Es un LEER con prompt (ej: URL)
-                // Imprime "> Prompt: INPUT"
                 writeToConsole(`> ${currentPromptText} ${input}`, 'line-sim-output');
             } else {
                 // Es un LEER sin prompt (ej: formato, calidad)
-                // Imprime solo el input en su propia línea
-                writeToConsole(input, 'line-sim-output'); 
+                writeToConsole(`> ${input}`, 'line-sim-output'); // Muestra el '1' o '2'
             }
-            // --- FIN LÓGICA DE IMPRESIÓN ---
             
             simulationInputResolve(input); 
             simulationInputResolve = null;
@@ -962,23 +1010,21 @@
                 writeToConsole('--- Simulación finalizada ---', 'line-warn');
                 updateStatus('Simulación completada', false, true);
                 cancelSimulation();
-            } else if (result.value && result.value.type === 'input') {
-                // Pausa para LEER
-                currentInputPrompt = result.value.prompt; // Guardar el prompt
-                
-                // Si el prompt está vacío (formato/calidad), el prompt visual será solo ">"
-                let visualPrompt = (currentInputPrompt.trim() !== "") ? `> ${currentInputPrompt} ` : "> ";
-                
-                // Para formato/calidad, el prompt viene vacío, queremos que el ">" esté en la línea de input
-                if (currentInputPrompt.trim() === "") {
-                    visualPrompt = "> ";
+            } else if (result.value) {
+                if (result.value.type === 'input') {
+                    // Pausa para LEER
+                    currentInputPrompt = result.value.prompt;
+                    let visualPrompt = (currentInputPrompt.trim() !== "") ? `> ${currentInputPrompt} ` : "> ";
+                    setConsoleMode('command', visualPrompt); 
+                    await new Promise(resolve => { simulationInputResolve = resolve; });
                 }
-
-                setConsoleMode('command', visualPrompt); 
-                
-                await new Promise(resolve => {
-                    simulationInputResolve = resolve;
-                });
+                else if (result.value.type === 'input_prompt_only') {
+                     // Solo mostrar prompt (para validación)
+                    currentInputPrompt = result.value.prompt;
+                    let visualPrompt = (currentInputPrompt.trim() !== "") ? `> ${currentInputPrompt} ` : "> ";
+                    setConsoleMode('command', visualPrompt); 
+                    // No creamos nueva promesa, la anterior sigue activa
+                }
             }
             
         } catch (error) {
@@ -995,7 +1041,6 @@
         currentInputPrompt = "";
     }
 
-    // ***** GESTOR DE MODO DE CONSOLA MEJORADO *****
     function setConsoleMode(mode, promptOverride = null) {
         consoleMode = mode;
         const inputLine = consoleInput.parentElement;
