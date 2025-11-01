@@ -38,9 +38,7 @@
 <body>
 <header>YTDOWNLOAD Studio</header>
 
-<nav id="tabs">
-  <!-- pestañas dinámicas -->
-</nav>
+<nav id="tabs"></nav>
 
 <main>
   <div class="editor">
@@ -67,27 +65,26 @@
 <footer>Editor / Simulador basado en tu analizador léxico y sintáctico — editable</footer>
 
 <script>
-/* ---------------------------
-   TOKEN / TABLA / ANALIZADOR
-   (Traducción JS de tu C++)
-   --------------------------- */
-
+/* ============================
+   Tokens (añadidos LBRACK,RBRACK,AS)
+   ============================ */
 const TOK = {
   FUNCION:0, VAR:1, IMPRIMIR:2, LEER:3, DESCARGAR:4, PARA:5, CADA:6, EN:7, HACER:8,
   SI:9, ENTONCES:10, MIENTRAS:11, FIN:12, MP3:13, MP4:14, CADENA:15, NUM:16,
   APARENTESIS:17, CPARENTESIS:18, ALLAVE:19, CLLAVE:20, IGUAL:21, COMA:22, PCOMA:23,
   PUNTO:24, ADMIRACION:25, MAIN:26, WAV:27, MKV:28, AVI:29, WEBM:30, FLAC:31,
+  LBRACK:32, RBRACK:33, AS:34,
   ERROR:999, FIN_ARCHIVO:666
 };
 
-// símbolo -> token (pclave). Usaremos mayúsculas para coincidencia.
+/* Tabla de símbolos (keywords) */
 class TablaSimbolos {
   constructor(){ this.tab = new Map(); }
   insert(lex, token){ this.tab.set(lex.toUpperCase(), {lex, token}); }
   findKeyword(lex){ return this.tab.get(lex.toUpperCase()) || null; }
-  allKeys(){ return [...this.tab.keys()]; }
 }
 
+// construir TS con corchetes y AS
 function buildDefaultTS(){
   const ts=new TablaSimbolos();
   ts.insert("FUNCION", TOK.FUNCION);
@@ -120,11 +117,15 @@ function buildDefaultTS(){
   ts.insert(";", TOK.PCOMA);
   ts.insert(".", TOK.PUNTO);
   ts.insert("!", TOK.ADMIRACION);
+  // NUEVOS
+  ts.insert("[", TOK.LBRACK);
+  ts.insert("]", TOK.RBRACK);
+  ts.insert("AS", TOK.AS);
   return ts;
 }
 
 /* ---------------------------
-   LEXER traducido a JS
+   LEXER traducido a JS (mejorado)
    --------------------------- */
 class Lexer {
   constructor(input){
@@ -133,14 +134,17 @@ class Lexer {
     this.i = 0;
     this.len = this.src.length;
     this.numero = ""; this.variable = ""; this.cadena = "";
+    this.lastPos = 0;
   }
-  isElement(c){ return "(){}=,;.!'".includes(c); }
+  isElement(c){ return "(){}=,;.!'[]".includes(c); } // añadidos corchetes
   skipWS(){ while(this.i < this.len && /\s/.test(this.src[this.i])) this.i++; }
   peek(n=0){ return this.src[this.i + n] || '\0'; }
   getToken(){
+    this.lastPos = this.i;
     this.skipWS();
     if(this.i >= this.len) return TOK.FIN_ARCHIVO;
     const c = this.src[this.i];
+    // letras/identificadores/keywords (incluye AS)
     if(/[A-Za-z]/.test(c)){
       let tmp="";
       while(this.i < this.len && /[A-Za-z0-9_]/.test(this.src[this.i])) tmp+=this.src[this.i++];
@@ -149,11 +153,13 @@ class Lexer {
       this.variable = tmp;
       return TOK.VAR;
     }
+    // numeros
     if(/[0-9]/.test(c)){
       let tmp="";
       while(this.i < this.len && (/[0-9.]/.test(this.src[this.i]))) tmp+=this.src[this.i++];
       this.numero = tmp; return TOK.NUM;
     }
+    // cadenas entre comillas simples (acepta comilla ASCII ')
     if(c === "'"){
       this.i++;
       let tmp="";
@@ -162,16 +168,18 @@ class Lexer {
       this.cadena = tmp;
       return TOK.CADENA;
     }
+    // elementos/puntuación: incluyen corchetes
     if(this.isElement(c)){
-      // try two-char tokens? (not needed here). Single char:
       const lex = c;
       this.i++;
       const kw = this.ts.findKeyword(lex);
       if(kw) return kw.token;
-      // otherwise if '.' (dot) is recognized: '.'->PUNTO
       if(lex === '.') return TOK.PUNTO;
+      if(lex === '[') return TOK.LBRACK;
+      if(lex === ']') return TOK.RBRACK;
       return TOK.ERROR;
     }
+    // si encontramos comillas “inteligentes” u otros caracteres unicode, los rechazamos con ERROR
     this.i++;
     return TOK.ERROR;
   }
@@ -189,7 +197,7 @@ class Lexer {
 }
 
 /* ---------------------------
-   PARSER / AUTÓMATA (tabla traducida)
+   PARSER / AUTÓMATA (tabla)
    --------------------------- */
 class Parser {
   constructor(tokens){
@@ -197,29 +205,23 @@ class Parser {
     this.pos = 0;
     this.estado = 0;
     this.ERROR = TOK.ERROR;
-    // crear tabla de transiciones (size suficiente)
     this.t = Array.from({length:50},()=>Array(50).fill(this.ERROR));
-    // copiar la tabla que definiste (estados 0..43, final 44)
     this.t[0][TOK.FUNCION]=1;
     this.t[1][TOK.MAIN]=2;
     this.t[2][TOK.APARENTESIS]=3;
     this.t[3][TOK.CPARENTESIS]=4;
     this.t[4][TOK.ALLAVE]=5;
-    // variable declara
     this.t[5][TOK.VAR]=6;
-    this.t[6][TOK.VAR]=7;       // nombre variable (lexer devuelve VAR)
+    this.t[6][TOK.VAR]=7;
     this.t[7][TOK.IGUAL]=8;
     this.t[8][TOK.CADENA]=9;
     this.t[9][TOK.PCOMA]=10;
-    // imprimir
     this.t[10][TOK.IMPRIMIR]=11;
     this.t[11][TOK.CADENA]=12;
     this.t[12][TOK.PCOMA]=13;
-    // leer
     this.t[13][TOK.LEER]=14;
     this.t[14][TOK.VAR]=15;
     this.t[15][TOK.PCOMA]=16;
-    // PARA CADA ...
     this.t[16][TOK.PARA]=17;
     this.t[17][TOK.CADA]=18;
     this.t[18][TOK.VAR]=19;
@@ -227,7 +229,6 @@ class Parser {
     this.t[20][TOK.VAR]=21;
     this.t[21][TOK.HACER]=22;
     this.t[22][TOK.ALLAVE]=23;
-    // descargar(...)
     this.t[23][TOK.DESCARGAR]=24;
     this.t[24][TOK.APARENTESIS]=25;
     this.t[25][TOK.VAR]=26;
@@ -244,12 +245,11 @@ class Parser {
     this.t[36][TOK.CPARENTESIS]=37;
     this.t[37][TOK.PCOMA]=38;
     this.t[38][TOK.CLLAVE]=39;
-    // cierre función
     this.t[39][TOK.FIN]=40;
     this.t[40][TOK.PCOMA]=41;
     this.t[41][TOK.CLLAVE]=42;
     this.t[42][TOK.FIN]=43;
-    this.t[43][TOK.ADMIRACION]=44; // final
+    this.t[43][TOK.ADMIRACION]=44;
     this.final = 44;
   }
 
@@ -274,9 +274,8 @@ class Parser {
 }
 
 /* ---------------------------
-   UI + Integración lexer+parser + simulador
+   UI + Simulador (igual)
    --------------------------- */
-
 const examples = [
 `FUNCION main() {
     VAR link = '';
@@ -305,7 +304,7 @@ const examples = [
 } FIN!`
 ];
 
-let tabs = []; // {id,title,content}
+let tabs = [];
 const tabsEl = document.getElementById('tabs');
 const codeEl = document.getElementById('code');
 const consoleEl = document.getElementById('console');
@@ -352,17 +351,14 @@ fileInput.addEventListener('change',(ev)=>{
   reader.readAsText(f);
 });
 
-// iniciar con 3 ejemplos
 loadExample(0); loadExample(1); loadExample(2);
 
-/* ---------- consola helpers ---------- */
 function clearConsole(){ consoleEl.innerHTML=''; }
 function appendConsole(text, cls){
   const d = document.createElement('div'); d.className='line '+(cls||''); d.innerText = typeof text==='string' ? text : JSON.stringify(text);
   consoleEl.appendChild(d); consoleEl.scrollTop = consoleEl.scrollHeight;
 }
 
-/* ---------- Entradas interactivas (input en consola) ---------- */
 function createConsolePrompt(){
   return new Promise(resolve=>{
     const row = document.createElement('div'); row.className='input-line';
@@ -384,7 +380,6 @@ function createConsolePrompt(){
   });
 }
 
-/* ---------- Ejecución: lexer -> parser -> simulación ---------- */
 async function ejecutar(){
   clearConsole();
   appendConsole("> Iniciando análisis léxico...");
@@ -392,12 +387,15 @@ async function ejecutar(){
   const lexer = new Lexer(src);
   const tokens = lexer.tokenizeAll();
 
-  // mostrar tokens (leves)
   appendConsole("Tokens detectados:");
   for(let i=0;i<tokens.length;i++){
     const t=tokens[i];
     appendConsole(` ${i+1}. ${tokenName(t)}`);
-    if(t===TOK.ERROR){ appendConsole(`[Error léxico] caracter no reconocido cerca de la posición ${lexer.i}`, 'error'); statusEl.innerText='Estado: error léxico'; return; }
+    if(t===TOK.ERROR){
+      appendConsole(`[Error léxico] caracter no reconocido cerca de la posición ${lexer.lastPos}`, 'error');
+      statusEl.innerText='Estado: error léxico';
+      return;
+    }
   }
 
   appendConsole("> Análisis léxico correcto.");
@@ -413,12 +411,10 @@ async function ejecutar(){
   appendConsole("> Análisis sintáctico correcto. Estado final válido.");
   statusEl.innerText='Estado: OK';
 
-  // elegir simulador según pestaña o contenido
   const content = src.toUpperCase();
   let mode='simple';
   if(content.includes('PARA CADA') || content.includes('PLAYLIST')) mode='playlist';
-  else if(content.includes('ENLACES') || content.includes("AS '")) mode='formatos';
-  // if tab title indicates other, override
+  else if(content.includes('ENLACES') || content.includes(" AS ")) mode='formatos';
   const tabTitle = tabs[currentTab].title.toLowerCase();
   if(tabTitle.includes('playlist')) mode='playlist';
   if(tabTitle.includes('format')) mode='formatos';
@@ -435,7 +431,6 @@ function tokenName(t){
   return String(t);
 }
 
-/* ---------- Simulaciones (con retrasos realistas) ---------- */
 function wait(ms){ return new Promise(r=>setTimeout(r,ms)); }
 
 async function runSimple(){
@@ -447,7 +442,7 @@ async function runSimple(){
   formatos.forEach((f,i)=> appendConsole(`  ${i+1}. ${f}`));
   appendConsole("Ingresa número de opción:");
   const opt = await createConsolePrompt();
-  const iopt = parseInt(opt)||0;
+  const iopt = parseInt(opt)||1;
   const fmt = formatos[iopt-1] || formatos[0];
   appendConsole(`Formato: ${fmt}`);
   appendConsole("Elige calidad:");
@@ -498,14 +493,12 @@ async function runPlaylist(){
 async function runFormatos(){
   appendConsole("Detectando enlaces en código...");
   await wait(700);
-  // intentamos extraer nombres de 'AS' en la lista (muy simple)
   const text = codeEl.value;
   const matchs = [...text.matchAll(/'(https?:\/\/[^']+)'\\s*AS\\s*'([^']+)'/ig)];
   let links = [];
   if(matchs.length>0){
     links = matchs.map(m=>({url:m[1],name:m[2]}));
   } else {
-    // fallback: dos enlaces de ejemplo
     links = [{url:'https://youtu.be/v001', name:'edits'},{url:'https://youtu.be/v002',name:'Clase1'}];
   }
   appendConsole(`Enlaces detectados: ${links.length}`);
@@ -527,20 +520,15 @@ async function runFormatos(){
   appendConsole("✅ Descarga por formato completada.");
 }
 
-/* ---------- wiring UI ---------- */
 document.getElementById('runBtn').addEventListener('click', async ()=>{
-  // save current textarea to tab content
   tabs[currentTab].content = codeEl.value;
   statusEl.innerText = 'Estado: analizando...';
   await ejecutar();
 });
 
-codeEl.addEventListener('input', ()=> {
-  tabs[currentTab].content = codeEl.value;
-  // no auto-analisis: solo al ejecutar
-});
+codeEl.addEventListener('input', ()=> { tabs[currentTab].content = codeEl.value; });
 
-appendConsole("> Bienvenido a YTDOWNLOAD Studio (simulación).");
+appendConsole("> Bienvenido a YTDOWNLOAD Studio.");
 appendConsole("> Selecciona una pestaña o sube un .txt para editar.");
 </script>
 </body>
