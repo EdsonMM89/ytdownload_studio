@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>YTDOWNLOAD Studio</title>
+    <title>YTDOWNLOAD Studio (Sintaxis Estricta)</title>
     <style>
         :root {
             --color-bg-darkest: #101010;
@@ -304,35 +304,35 @@
 
     <script>
     // ==================================================================
-    // 1. ESTADO Y DATOS INICIALES (TUS SCRIPTS CORREGIDOS)
+    // 1. ESTADO Y DATOS INICIALES (CON SINTAXIS ESTRICTA ';')
     // ==================================================================
     
     const initialFiles = {
         'simple.ytd': 
 `FUNCION main() {
-    VAR link = ' '
-    IMPRIMIR 'Ingresa la URL del video:'
-    LEER link
-    descargar(link,' ', 'Video1', 'C:/Videos')
+    VAR link = ' ';
+    IMPRIMIR 'Ingresa la URL del video:';
+    LEER link;
+    descargar(link,' ', 'Video1', 'C:/Videos');
 } FIN!`,
         
         'playlist.ytd':
 `FUNCION main() {
-    VAR playlistURL = ' '
-    IMPRIMIR 'Ingresa la URL de la PLAYLIST:'
-    LEER playlistURL
-    descargar(playlistURL, ' ', 'MiPlaylist', 'C:/Musica')
+    VAR playlistURL = ' ';
+    IMPRIMIR 'Ingresa la URL de la PLAYLIST:';
+    LEER playlistURL;
+    descargar(playlistURL, ' ', 'MiPlaylist', 'C:/Musica');
 } FIN!`,
         
         'formatos.ytd':
 `FUNCION main() {
-    VAR enlaces = ['https://video1.com' AS 'Clase 1', 'https://video2.com' AS 'Proyecto']
-    VAR formato = ' '
-    IMPRIMIR 'Selecciona el formato para el lote (mp3/mp4):'
-    LEER formato
+    VAR enlaces = ['https://video1.com' AS 'Clase 1', 'https://video2.com' AS 'Proyecto'];
+    VAR formato = ' ';
+    IMPRIMIR 'Selecciona el formato para el lote (mp3/mp4):';
+    LEER formato;
     PARA CADA e EN enlaces HACER {
         SI formato ENTONCES {
-            descargar(e.url, formato, e.nombre, 'D:/Videos')
+            descargar(e.url, formato, e.nombre, 'D:/Videos');
         }
     } FIN;
 } FIN!`
@@ -482,14 +482,14 @@
     }
 
     // ==================================================================
-    // 4. ANALIZADOR SINTÁCTICO (Generador de AST)
+    // 4. ANALIZADOR SINTÁCTICO (Generador de AST) - MODO ESTRICTO
     // ==================================================================
 
     let parserTokens = [];
     let parserPos = 0;
 
     function parseError(token, mensaje) {
-        return `Error Sintáctico (L:${token.linea}, C:${col}): ${mensaje}. Se obtuvo '${token.value}'.`;
+        return `Error Sintáctico (L:${token.linea}, C:${token.col}): ${mensaje}. Se obtuvo '${token.value}'.`;
     }
 
     const peek = () => parserTokens[parserPos];
@@ -552,13 +552,13 @@
         if (match(TokenType.DESCARGAR)) return parseDescargarStatement();
         if (match(TokenType.PARA)) return parseParaCadaStatement();
         if (match(TokenType.SI)) return parseSiStatement();
-        // Permitir ; vacíos
+        // Permitir ; vacíos (líneas en blanco con ;)
         if (match(TokenType.PUNTO_COMA)) { return { type: 'EmptyStatement' }; } 
         
         throw new Error(parseError(peek(), "Instrucción no reconocida"));
     }
 
-    // --- Parser con ; OPCIONAL ---
+    // --- Parser con ; OBLIGATORIO ---
 
     function parseVarDeclaration() {
         const name = consume(TokenType.IDENTIFICADOR, "Se esperaba un nombre para la variable").value;
@@ -582,19 +582,19 @@
             throw new Error(parseError(peek(), "Se esperaba un valor (string o array) para la variable"));
         }
         
-        match(TokenType.PUNTO_COMA); // ; es opcional
+        consume(TokenType.PUNTO_COMA, "Se esperaba ';' al final de la declaración VAR");
         return { type: 'VarDeclaration', name, initializer };
     }
 
     function parseImprimirStatement() {
         const value = consume(TokenType.STRING, "Se esperaba un string después de 'IMPRIMIR'").value;
-        match(TokenType.PUNTO_COMA); // ; es opcional
+        consume(TokenType.PUNTO_COMA, "Se esperaba ';' al final de IMPRIMIR");
         return { type: 'ImprimirStatement', value };
     }
     
     function parseLeerStatement() {
         const variable = consume(TokenType.IDENTIFICADOR, "Se esperaba un nombre de variable después de 'LEER'").value;
-        match(TokenType.PUNTO_COMA); // ; es opcional
+        consume(TokenType.PUNTO_COMA, "Se esperaba ';' al final de LEER");
         return { type: 'LeerStatement', variable };
     }
 
@@ -611,7 +611,7 @@
         args.push(parseExpression());
         
         consume(TokenType.PAREN_DER, "Se esperaba ')' después de los argumentos de 'descargar'");
-        match(TokenType.PUNTO_COMA); // ; es opcional
+        consume(TokenType.PUNTO_COMA, "Se esperaba ';' al final de descargar");
         
         return { type: 'DescargarStatement', arguments: args };
     }
@@ -644,24 +644,27 @@
         return { type: 'SiStatement', condition, body };
     }
     
-    function parseExpression() {
-        if (match(TokenType.STRING)) {
-            return { type: 'Literal', value: previous().value };
+    // ***** BUG FIX: Esta es una función normal, NO un generador *****
+    function evaluateExpression(node, environment) {
+        if (!node) return undefined;
+        switch(node.type) {
+            case 'Literal':
+                return node.value;
+            case 'Identifier':
+                return environment.get(node.name);
+            case 'MemberExpression':
+                const object = environment.get(node.object); 
+                if (typeof object !== 'object' || object === null) {
+                    throw new Error(`Simulación: '${node.object}' no es un objeto.`);
+                }
+                if(node.property === 'url' || node.property === 'nombre') {
+                    return object[node.property];
+                } else {
+                    throw new Error(`Simulación: Propiedad desconocida '${node.property}'.`);
+                }
+            default:
+                throw new Error(`Simulación: Expresión no reconocida '${node.type}'.`);
         }
-        if (match(TokenType.TIPO_DATO)) {
-             return { type: 'Literal', value: previous().value };
-        }
-        
-        if (match(TokenType.IDENTIFICADOR)) {
-            const id = previous().value;
-            if (match(TokenType.PUNTO)) {
-                const property = consume(TokenType.IDENTIFICADOR, "Se esperaba nombre de propiedad (url, nombre) después de '.'").value;
-                return { type: 'MemberExpression', object: id, property: property };
-            }
-            return { type: 'Identifier', name: id };
-        }
-
-        throw new Error(parseError(peek(), "Se esperaba una expresión (variable, string, tipo)"));
     }
 
 
@@ -689,7 +692,6 @@
         }
     }
 
-    // ***** SIMULADOR CON LÓGICA MEJORADA *****
     async function* simulationGenerator(astNode, environment) {
         if (!astNode) {
             return; // Ignorar nodos nulos
@@ -698,22 +700,18 @@
         // --- Helper de simulación para pedir input validado ---
         async function* askForInput(prompt, options) {
             let input;
-            // Imprimir el prompt (multilínea)
             prompt.split('\n').forEach(line => writeToConsole(line, 'line-sim-output'));
             
-            const validKeys = Object.keys(options); // Ej: ['1', '2']
-            // Validar solo números que estén en las opciones
+            const validKeys = Object.keys(options); 
             const regex = new RegExp(`^(${validKeys.join('|')})$`); 
 
             while (true) {
-                // Pedir input en una línea nueva
                 input = yield { type: 'input', prompt: "" }; 
                 
                 if (regex.test(input)) {
                     return options[input]; // Devuelve el VALOR, ej: 'mp3'
                 } else {
                     writeToConsole(`> Opción no válida. Intente de nuevo.`, 'line-error');
-                    // Volver a mostrar el prompt de input (>)
                     yield { type: 'input_prompt_only', prompt: "" };
                 }
             }
@@ -749,8 +747,6 @@
                     consoleOutput.removeChild(consoleOutput.lastChild);
                 }
                 
-                // ***** FIX *****
-                // El 'yield' devuelve el valor que se pasa al 'next()'
                 const input = yield { type: 'input', prompt: lastLineText }; 
                 
                 environment.assign(astNode.variable, input);
@@ -763,20 +759,17 @@
             case 'DescargarStatement':
                 const args = [];
                 for(const argNode of astNode.arguments) {
-                    // ¡Importante! 'yield*' delega al generador 'evaluateExpression'
-                    const evaluatedArg = yield* evaluateExpression(argNode, environment);
+                    // ***** BUG FIX: Sin yield* *****
+                    const evaluatedArg = evaluateExpression(argNode, environment);
                     args.push(evaluatedArg);
                 }
                 const [url, formato, nombre, ruta] = args;
                 
-                // ***** FIX: Asegurarse que 'url' no sea undefined *****
+                // ***** BUG FIX: Chequear 'url' *****
                 if (typeof url === 'undefined') {
                     throw new Error("La URL es 'undefined'. ¿La variable 'link' se leyó correctamente?");
                 }
 
-                // ---------------------------------------------
-                // MODO 1: INTERACTIVO (formato está vacío)
-                // ---------------------------------------------
                 if (formato.trim() === '') {
                     let loopCount = (url.toLowerCase().includes('playlist')) ? 3 : 1;
                     if (loopCount > 1) {
@@ -812,9 +805,6 @@
                         await sleep(1500);
                         writeToConsole(`> Descarga completada en ${ruta}`, 'line-success');
                     }
-                // ---------------------------------------------
-                // MODO 2: BATCH (formato tiene un valor)
-                // ---------------------------------------------
                 } else {
                     writeToConsole(`> Descargando (lote) '${nombre}.${formato}'...`, 'line-info');
                     await sleep(1000); 
@@ -848,26 +838,6 @@
                 break;
             default:
                 throw new Error(`Simulación: Nodo AST no reconocido '${astNode.type}'.`);
-        }
-    }
-    
-    // El 'yield*' es clave aquí
-    function* evaluateExpression(node, environment) {
-        switch(node.type) {
-            case 'Literal':
-                return node.value;
-            case 'Identifier':
-                return environment.get(node.name);
-            case 'MemberExpression':
-                const object = environment.get(node.object); 
-                if (typeof object !== 'object' || object === null) {
-                    throw new Error(`Simulación: '${node.object}' no es un objeto.`);
-                }
-                if(node.property === 'url' || node.property === 'nombre') {
-                    return object[node.property];
-                } else {
-                    throw new Error(`Simulación: Propiedad desconocida '${node.property}'.`);
-                }
         }
     }
 
@@ -943,11 +913,10 @@
         const input = consoleInput.value;
         consoleInput.value = '';
         
-        // Solo actúa si estamos en modo 'command' Y hay una promesa esperando
         if (consoleMode === 'command' && simulationInputResolve) {
             
             const currentPromptText = currentInputPrompt;
-            setConsoleMode('simulation'); // Poner en modo 'procesando'
+            setConsoleMode('simulation'); 
             
             if (currentPromptText.trim() !== "") {
                 writeToConsole(`> ${currentPromptText} ${input}`, 'line-sim-output');
@@ -955,8 +924,6 @@
                 writeToConsole(`> ${input}`, 'line-sim-output'); 
             }
             
-            // ¡NO llames a advanceSimulation() aquí!
-            // Solo resuelve la promesa, 'advanceSimulation' está esperando.
             simulationInputResolve(input); 
             simulationInputResolve = null;
         }
@@ -985,6 +952,7 @@
     // --- Flujo de Ejecución ---
 
     function runAnalysisAndSimulation() {
+        // ***** SIN AUTOCORRECCIÓN DE ';' *****
         const code = tabData[activeFile];
         
         consoleOutput.innerHTML = '';
@@ -1014,18 +982,15 @@
     function startSimulation(ast) {
         const environment = new Environment();
         currentSimulation = simulationGenerator(ast, environment);
-        setConsoleMode('simulation'); // Modo 'procesando'
-        // ¡Llama a advanceSimulation SIN argumento la primera vez!
+        setConsoleMode('simulation'); 
         advanceSimulation(); 
     }
 
     // ***** FUNCIÓN advanceSimulation() CORREGIDA *****
-    // Esta función ahora se auto-llama y maneja el flujo
     async function advanceSimulation(valueFromLastYield) { 
         if (!currentSimulation) return;
         
         try {
-            // ¡Pasa el valor al generador!
             const result = await currentSimulation.next(valueFromLastYield);
             
             if (result.done) {
@@ -1039,18 +1004,14 @@
 
             if (value && value.type) {
                 if (value.type === 'input' || value.type === 'input_prompt_only') {
-                    // Pausa para LEER o pedir validación
                     currentInputPrompt = value.prompt;
                     let visualPrompt = (currentInputPrompt.trim() !== "") ? `> ${currentInputPrompt} ` : "> ";
                     setConsoleMode('command', visualPrompt); 
                     
-                    // Espera a que 'handleConsoleKeyDown' resuelva esto
-                    // 'nextValue' contendrá el input del usuario
                     const nextValue = await new Promise(resolve => { 
                         simulationInputResolve = resolve; 
                     });
                     
-                    // ¡Llama recursivamente a advanceSimulation CON el valor!
                     advanceSimulation(nextValue); 
                 }
             } else {
@@ -1067,7 +1028,7 @@
     }
     
     function cancelSimulation() {
-        setConsoleMode('idle'); // Modo 'inactivo'
+        setConsoleMode('idle'); 
         currentSimulation = null;
         simulationInputResolve = null;
         currentInputPrompt = "";
@@ -1077,13 +1038,13 @@
         consoleMode = mode;
         const inputLine = consoleInput.parentElement;
         
-        if (mode === 'command') { // Esperando input
+        if (mode === 'command') { 
             promptText.textContent = promptOverride !== null ? promptOverride : "> ";
-            inputLine.style.display = 'flex'; // Mostrar línea de input
+            inputLine.style.display = 'flex'; 
             consoleInput.focus();
-        } else { // 'simulation' (procesando) o 'idle' (inactivo)
+        } else { 
             promptText.textContent = "";
-            inputLine.style.display = 'none'; // Ocultar línea de input
+            inputLine.style.display = 'none'; 
         }
     }
 
