@@ -376,7 +376,7 @@
         PAREN_IZQ: '(', PAREN_DER: ')',
         LLAVE_IZQ: '{', LLAVE_DER: '}',
         CORCH_IZQ: '[', CORCH_DER: ']',
-        PUNTO_COMA: ';', // Sigue siendo un token
+        PUNTO_COMA: ';', 
         COMA: ',',
         ASIGNAR: '=',
         PUNTO: '.',
@@ -691,7 +691,9 @@
 
     // ***** SIMULADOR CON LÓGICA MEJORADA *****
     async function* simulationGenerator(astNode, environment) {
-        if (!astNode) yield; // Ignorar nodos nulos
+        if (!astNode) {
+            return; // Ignorar nodos nulos
+        }
         
         // --- Helper de simulación para pedir input validado ---
         async function* askForInput(prompt, options) {
@@ -747,6 +749,8 @@
                     consoleOutput.removeChild(consoleOutput.lastChild);
                 }
                 
+                // ***** FIX *****
+                // El 'yield' devuelve el valor que se pasa al 'next()'
                 const input = yield { type: 'input', prompt: lastLineText }; 
                 
                 environment.assign(astNode.variable, input);
@@ -759,10 +763,17 @@
             case 'DescargarStatement':
                 const args = [];
                 for(const argNode of astNode.arguments) {
-                    args.push(yield* evaluateExpression(argNode, environment));
+                    // ¡Importante! 'yield*' delega al generador 'evaluateExpression'
+                    const evaluatedArg = yield* evaluateExpression(argNode, environment);
+                    args.push(evaluatedArg);
                 }
                 const [url, formato, nombre, ruta] = args;
                 
+                // ***** FIX: Asegurarse que 'url' no sea undefined *****
+                if (typeof url === 'undefined') {
+                    throw new Error("La URL es 'undefined'. ¿La variable 'link' se leyó correctamente?");
+                }
+
                 // ---------------------------------------------
                 // MODO 1: INTERACTIVO (formato está vacío)
                 // ---------------------------------------------
@@ -840,6 +851,7 @@
         }
     }
     
+    // El 'yield*' es clave aquí
     function* evaluateExpression(node, environment) {
         switch(node.type) {
             case 'Literal':
@@ -924,12 +936,14 @@
         tabData[activeFile] = editor.value;
     }
 
+    // ***** MANEJADOR DE INPUT CORREGIDO *****
     async function handleConsoleKeyDown(e) {
         if (e.key !== 'Enter') return;
         
         const input = consoleInput.value;
         consoleInput.value = '';
         
+        // Solo actúa si estamos en modo 'command' Y hay una promesa esperando
         if (consoleMode === 'command' && simulationInputResolve) {
             
             const currentPromptText = currentInputPrompt;
@@ -941,10 +955,10 @@
                 writeToConsole(`> ${input}`, 'line-sim-output'); 
             }
             
+            // ¡NO llames a advanceSimulation() aquí!
+            // Solo resuelve la promesa, 'advanceSimulation' está esperando.
             simulationInputResolve(input); 
             simulationInputResolve = null;
-            
-            await advanceSimulation(); 
         }
     }
 
@@ -1001,18 +1015,19 @@
         const environment = new Environment();
         currentSimulation = simulationGenerator(ast, environment);
         setConsoleMode('simulation'); // Modo 'procesando'
-        advanceSimulation(); // ¡El primer 'next' se llama aquí!
+        // ¡Llama a advanceSimulation SIN argumento la primera vez!
+        advanceSimulation(); 
     }
 
     // ***** FUNCIÓN advanceSimulation() CORREGIDA *****
-    async function advanceSimulation() {
+    // Esta función ahora se auto-llama y maneja el flujo
+    async function advanceSimulation(valueFromLastYield) { 
         if (!currentSimulation) return;
         
         try {
-            // FIX 1: AWAIT the .next() call on the async generator
-            const result = await currentSimulation.next();
+            // ¡Pasa el valor al generador!
+            const result = await currentSimulation.next(valueFromLastYield);
             
-            // FIX 2: Check 'done' status first
             if (result.done) {
                 writeToConsole('--- Simulación finalizada ---', 'line-warn');
                 updateStatus('Simulación completada', false, true);
@@ -1020,26 +1035,27 @@
                 return;
             }
 
-            // FIX 3: Get the value from the result
             const value = result.value; 
 
             if (value && value.type) {
-                if (value.type === 'input') {
-                    // Pausa para LEER
+                if (value.type === 'input' || value.type === 'input_prompt_only') {
+                    // Pausa para LEER o pedir validación
                     currentInputPrompt = value.prompt;
                     let visualPrompt = (currentInputPrompt.trim() !== "") ? `> ${currentInputPrompt} ` : "> ";
                     setConsoleMode('command', visualPrompt); 
-                    // Espera a que handleConsoleKeyDown resuelva esto
-                    await new Promise(resolve => { simulationInputResolve = resolve; });
+                    
+                    // Espera a que 'handleConsoleKeyDown' resuelva esto
+                    // 'nextValue' contendrá el input del usuario
+                    const nextValue = await new Promise(resolve => { 
+                        simulationInputResolve = resolve; 
+                    });
+                    
+                    // ¡Llama recursivamente a advanceSimulation CON el valor!
+                    advanceSimulation(nextValue); 
                 }
-                else if (value.type === 'input_prompt_only') {
-                     // Solo mostrar prompt (para validación)
-                    currentInputPrompt = value.prompt;
-                    let visualPrompt = (currentInputPrompt.trim() !== "") ? `> ${currentInputPrompt} ` : "> ";
-                    setConsoleMode('command', visualPrompt); 
-                    // No creamos nueva promesa, la anterior sigue activa
-                    await new Promise(resolve => { simulationInputResolve = resolve; });
-                }
+            } else {
+                // Si no es un 'input' (p.ej. un 'sleep' o nada), sigue avanzando
+                advanceSimulation();
             }
             
         } catch (error) {
