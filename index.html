@@ -307,7 +307,6 @@
     // 1. ESTADO Y DATOS INICIALES (CON SINTAXIS ESTRICTA ';')
     // ==================================================================
     
-    // ***** FIX 1: Archivos base actualizados con ';' obligatorio *****
     const initialFiles = {
         'simple.ytd': 
 `FUNCION main() {
@@ -343,8 +342,8 @@
     let tabData = { ...initialFiles };
     let activeFile = 'simple.ytd';
     let consoleMode = 'command'; // 'command' | 'simulation' | 'idle'
-    let currentSimulation = null; 
-    let simulationInputResolve = null; 
+    let currentProcess = null; // Renombrado de 'currentSimulation'
+    let processInputResolve = null; // Renombrado de 'simulationInputResolve'
     let currentInputPrompt = ""; 
 
     // ==================================================================
@@ -644,7 +643,6 @@
         return { type: 'SiStatement', condition, body };
     }
     
-    // ***** FIX 2: La función 'parseExpression' que faltaba *****
     function parseExpression() {
         if (match(TokenType.STRING)) {
             return { type: 'Literal', value: previous().value };
@@ -667,7 +665,7 @@
 
 
     // ==================================================================
-    // 5. SIMULADOR DE EJECUCIÓN (Intérprete del AST)
+    // 5. INTÉRPRETE DE EJECUCIÓN (AST)
     // ==================================================================
 
     class Environment {
@@ -682,17 +680,16 @@
                      const [objName, propName] = name.split('.');
                      const obj = this.get(objName);
                      if (typeof obj !== 'object' || obj === null) {
-                         throw new Error(`Simulación: '${objName}' no es un objeto.`);
+                         throw new Error(`Ejecución: '${objName}' no es un objeto.`);
                      }
                      return obj[propName];
                 }
-                throw new Error(`Simulación: Variable no definida '${name}'.`);
+                throw new Error(`Ejecución: Variable no definida '${name}'.`);
             }
             return this.variables.get(name);
         }
     }
 
-    // ***** FIX 3: 'evaluateExpression' NO es un generador (no usa yield) *****
     function evaluateExpression(node, environment) {
         if (!node) return undefined;
         switch(node.type) {
@@ -703,20 +700,20 @@
             case 'MemberExpression':
                 const object = environment.get(node.object); 
                 if (typeof object !== 'object' || object === null) {
-                    throw new Error(`Simulación: '${node.object}' no es un objeto.`);
+                    throw new Error(`Ejecución: '${node.object}' no es un objeto.`);
                 }
                 if(node.property === 'url' || node.property === 'nombre') {
                     return object[node.property];
                 } else {
-                    throw new Error(`Simulación: Propiedad desconocida '${node.property}'.`);
+                    throw new Error(`Ejecución: Propiedad desconocida '${node.property}'.`);
                 }
             default:
-                throw new Error(`Simulación: Expresión no reconocida '${node.type}'.`);
+                throw new Error(`Ejecución: Expresión no reconocida '${node.type}'.`);
         }
     }
 
 
-    async function* simulationGenerator(astNode, environment) {
+    async function* executionGenerator(astNode, environment) {
         if (!astNode) {
             return; // Ignorar nodos nulos
         }
@@ -743,7 +740,7 @@
         switch (astNode.type) {
             case 'Program':
                 for (const statement of astNode.body) {
-                    yield* simulationGenerator(statement, environment);
+                    yield* executionGenerator(statement, environment);
                 }
                 break;
             case 'EmptyStatement':
@@ -780,46 +777,60 @@
             case 'DescargarStatement':
                 const args = [];
                 for(const argNode of astNode.arguments) {
-                    // Llamada a la función normal 'evaluateExpression'
                     const evaluatedArg = evaluateExpression(argNode, environment);
                     args.push(evaluatedArg);
                 }
                 const [url, formato, nombre, ruta] = args;
                 
-                // ***** FIX 4: El bug que reportaste (toLowerCase) *****
                 if (typeof url === 'undefined') {
                     throw new Error(`La URL es 'undefined'. Verifica que la variable 'link' o 'playlistURL' se haya leído (LEER) correctamente.`);
                 }
 
                 if (formato.trim() === '') {
-                    // Ahora 'url' está garantizado que es un string
                     let loopCount = (url.toLowerCase().includes('playlist')) ? 3 : 1;
                     if (loopCount > 1) {
-                         writeToConsole(`> Playlist detectada. Simulando descarga de ${loopCount} videos...`, 'line-info');
+                         writeToConsole(`> Playlist detectada. Descargando ${loopCount} videos...`, 'line-info');
                     }
                     
                     for (let i = 0; i < loopCount; i++) {
                         let videoNombre = (loopCount > 1) ? `${nombre}_${i+1}` : nombre;
                         if(loopCount > 1) writeToConsole(`--- Video ${i+1} de ${loopCount} (${videoNombre}) ---`, 'line-warn');
 
-                        const formatoMap = { '1': 'mp3', '2': 'mp4' };
-                        const formatoSeleccionado = yield* askForInput(
-                            '> Seleccione formato:\n1. mp3\n2. mp4',
-                            formatoMap
-                        ); 
+                        // ***** NUEVOS FORMATOS *****
+                        const formatoMap = { 
+                            '1': 'mp3', 
+                            '2': 'mp4', 
+                            '3': 'mkv', 
+                            '4': 'wav', 
+                            '5': 'avi', 
+                            '6': 'flac',
+                            '7': 'webm'
+                        };
+                        const formatoPrompt = '> Seleccione formato:\n' +
+                                            '1. mp3 (Audio)\n' +
+                                            '2. mp4 (Video)\n' +
+                                            '3. mkv (Video)\n' +
+                                            '4. wav (Audio)\n' +
+                                            '5. avi (Video)\n' +
+                                            '6. flac (Audio)\n' +
+                                            '7. webm (Video)';
+                        const formatoSeleccionado = yield* askForInput(formatoPrompt, formatoMap); 
 
+                        // ***** LÓGICA DE CALIDAD MEJORADA *****
                         let calidadSeleccionada;
-                        if (formatoSeleccionado === 'mp3') {
-                            const calidadMp3Map = { '1': '128kbps', '2': '320kbps' };
+                        const audioFormats = ['mp3', 'wav', 'flac'];
+                        
+                        if (audioFormats.includes(formatoSeleccionado)) {
+                            const calidadAudioMap = { '1': '128kbps', '2': '192kbps', '3': '320kbps' };
                             calidadSeleccionada = yield* askForInput(
-                                '> Seleccione calidad de audio:\n1. 128kbps (Estándar)\n2. 320kbps (Alta Calidad)',
-                                calidadMp3Map
+                                '> Seleccione calidad de audio:\n1. 128kbps (Estándar)\n2. 192kbps (Buena)\n3. 320kbps (Alta Calidad)',
+                                calidadAudioMap
                             );
-                        } else { // mp4
-                            const calidadMp4Map = { '1': '360p', '2': '720p', '3': '1080p' };
+                        } else { // Video
+                            const calidadVideoMap = { '1': '360p', '2': '720p', '3': '1080p' };
                             calidadSeleccionada = yield* askForInput(
                                 '> Seleccione calidad de video:\n1. 360p (Baja)\n2. 720p (HD)\n3. 1080p (Full HD)',
-                                calidadMp4Map
+                                calidadVideoMap
                             );
                         }
                         
@@ -837,14 +848,14 @@
             case 'ParaCadaStatement':
                 const array = environment.get(astNode.arrayVar);
                 if (!Array.isArray(array)) {
-                    throw new Error(`Simulación: '${astNode.arrayVar}' no es un array (en PARA CADA).`);
+                    throw new Error(`Ejecución: '${astNode.arrayVar}' no es un array (en PARA CADA).`);
                 }
                 const loopEnv = new Environment();
                 loopEnv.variables = new Map(environment.variables);
                 for (const item of array) {
                     loopEnv.define(astNode.iteratorVar, item);
                     for (const statement of astNode.body) {
-                        yield* simulationGenerator(statement, loopEnv);
+                        yield* executionGenerator(statement, loopEnv);
                     }
                 }
                 break;
@@ -854,12 +865,12 @@
                     const ifEnv = new Environment(); 
                     ifEnv.variables = new Map(environment.variables);
                     for (const statement of astNode.body) {
-                        yield* simulationGenerator(statement, ifEnv);
+                        yield* executionGenerator(statement, ifEnv);
                     }
                 }
                 break;
             default:
-                throw new Error(`Simulación: Nodo AST no reconocido '${astNode.type}'.`);
+                throw new Error(`Ejecución: Nodo AST no reconocido '${astNode.type}'.`);
         }
     }
 
@@ -876,7 +887,7 @@
         consoleInput.addEventListener('keydown', handleConsoleKeyDown);
         consoleWrapper.addEventListener('click', () => consoleInput.focus());
         fileUploader.addEventListener('change', handleFileUpload);
-        runButton.addEventListener('click', runAnalysisAndSimulation);
+        runButton.addEventListener('click', runAnalysisAndExecution);
         uploadButton.addEventListener('click', () => fileUploader.click());
         
         writeToConsole('--- YTDOWNLOAD Studio ---', 'line-warn');
@@ -903,7 +914,7 @@
         editor.value = tabData[filename] || '';
         
         updateStatus('Listo');
-        cancelSimulation();
+        cancelProcess();
         consoleInput.focus();
     }
 
@@ -934,10 +945,10 @@
         const input = consoleInput.value;
         consoleInput.value = '';
         
-        if (consoleMode === 'command' && simulationInputResolve) {
+        if (consoleMode === 'command' && processInputResolve) {
             
             const currentPromptText = currentInputPrompt;
-            setConsoleMode('simulation'); 
+            setConsoleMode('processing'); 
             
             if (currentPromptText.trim() !== "") {
                 writeToConsole(`> ${currentPromptText} ${input}`, 'line-sim-output');
@@ -945,8 +956,8 @@
                 writeToConsole(`> ${input}`, 'line-sim-output'); 
             }
             
-            simulationInputResolve(input); 
-            simulationInputResolve = null;
+            processInputResolve(input); 
+            processInputResolve = null;
         }
     }
 
@@ -972,7 +983,7 @@
     
     // --- Flujo de Ejecución ---
 
-    function runAnalysisAndSimulation() {
+    function runAnalysisAndExecution() {
         const code = tabData[activeFile];
         
         consoleOutput.innerHTML = '';
@@ -995,28 +1006,27 @@
         writeToConsole('✓ Análisis Sintáctico completado.', 'line-success');
         updateStatus('Análisis exitoso', false, true);
 
-        writeToConsole('→ Ejecutando simulación de descarga...', 'line-warn');
-        startSimulation(parserResult.ast);
+        writeToConsole('→ Iniciando proceso de descarga...', 'line-warn');
+        startProcess(parserResult.ast);
     }
     
-    function startSimulation(ast) {
+    function startProcess(ast) {
         const environment = new Environment();
-        currentSimulation = simulationGenerator(ast, environment);
-        setConsoleMode('simulation'); 
-        advanceSimulation(); 
+        currentProcess = executionGenerator(ast, environment);
+        setConsoleMode('processing'); 
+        advanceProcess(); 
     }
 
-    // ***** FUNCIÓN advanceSimulation() CORREGIDA *****
-    async function advanceSimulation(valueFromLastYield) { 
-        if (!currentSimulation) return;
+    async function advanceProcess(valueFromLastYield) { 
+        if (!currentProcess) return;
         
         try {
-            const result = await currentSimulation.next(valueFromLastYield);
+            const result = await currentProcess.next(valueFromLastYield);
             
             if (result.done) {
-                writeToConsole('--- Simulación finalizada ---', 'line-warn');
-                updateStatus('Simulación completada', false, true);
-                cancelSimulation();
+                writeToConsole('--- Proceso finalizado ---', 'line-warn');
+                updateStatus('Proceso completado', false, true);
+                cancelProcess();
                 return;
             }
 
@@ -1029,27 +1039,27 @@
                     setConsoleMode('command', visualPrompt); 
                     
                     const nextValue = await new Promise(resolve => { 
-                        simulationInputResolve = resolve; 
+                        processInputResolve = resolve; 
                     });
                     
-                    advanceSimulation(nextValue); 
+                    advanceProcess(nextValue); 
                 }
             } else {
-                advanceSimulation();
+                advanceProcess();
             }
             
         } catch (error) {
             console.error(error); // Log real para debugging
-            writeToConsole(`Error de Simulación: ${error.message}`, 'line-error');
-            updateStatus('Error en Simulación', true);
-            cancelSimulation();
+            writeToConsole(`Error de Ejecución: ${error.message}`, 'line-error');
+            updateStatus('Error en Ejecución', true);
+            cancelProcess();
         }
     }
     
-    function cancelSimulation() {
+    function cancelProcess() {
         setConsoleMode('idle'); 
-        currentSimulation = null;
-        simulationInputResolve = null;
+        currentProcess = null;
+        processInputResolve = null;
         currentInputPrompt = "";
     }
 
