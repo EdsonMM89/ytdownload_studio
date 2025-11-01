@@ -3,76 +3,74 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>YTDOWNLOAD Studio (Fiel a C++)</title>
+    <title>YTDOWNLOAD Studio</title>
     <style>
         :root {
-            --color-bg: #0a0a0a;
-            --color-editor-bg: #1a1a1a;
-            --color-consola-bg: #0d0d0d;
+            --color-bg-darkest: #101010;
+            --color-bg-dark: #1e1e1e;
+            --color-bg-sidebar: #191919;
+            --color-consola-bg: #151515;
             --color-texto: #e0e0e0;
+            --color-texto-secundario: #888;
             --color-verde: #00ff41;
-            --color-rojo: #ff4141;
+            --color-rojo: #e53935;
             --color-azul: #41a6ff;
             --color-amarillo: #f0f000;
-            --color-borde: #333;
-            --color-tab: #222;
-            --color-tab-active: #0d0d0d;
+            --color-borde: #2a2a2a;
+            --color-rojo-btn: #d32f2f;
+            --color-rojo-btn-hover: #e53935;
         }
 
         html, body {
             height: 100%;
             margin: 0;
             font-family: 'Consolas', 'Monaco', monospace;
-            background-color: var(--color-bg);
+            background-color: var(--color-bg-darkest);
             color: var(--color-texto);
-            display: flex;
-            flex-direction: column;
+            overflow: hidden;
         }
 
-        .container {
+        /* --- Estructura Principal --- */
+        .studio-container {
             display: flex;
             flex-direction: column;
             height: 100vh;
-            width: 100%;
         }
 
-        /* --- Pestañas --- */
-        .tab-bar {
-            display: flex;
-            background-color: var(--color-bg);
+        header {
+            background-color: var(--color-bg-darkest);
             border-bottom: 1px solid var(--color-borde);
+            padding: 10px 20px;
+            font-size: 1.2em;
+            font-weight: bold;
+            color: var(--color-texto);
             flex-shrink: 0;
         }
 
-        .tab {
-            padding: 10px 15px;
-            cursor: pointer;
-            background-color: var(--color-tab);
-            border-right: 1px solid var(--color-borde);
-            white-space: nowrap;
-        }
-
-        .tab.active {
-            background-color: var(--color-tab-active);
-            color: var(--color-verde);
-            border-bottom: 2px solid var(--color-verde);
-            margin-bottom: -1px; /* Alinea con el borde */
-        }
-
-        .tab:hover:not(.active) {
-            background-color: #333;
-        }
-
-        /* --- Editor --- */
-        .editor-container {
-            flex: 1; /* Ocupa el espacio superior */
+        .main-content {
             display: flex;
-            min-height: 200px;
+            flex-grow: 1;
+            overflow: hidden; /* Evita scroll en el main */
+        }
+
+        /* --- Panel Izquierdo (Editor + Consola) --- */
+        .left-pane {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            background-color: var(--color-bg-dark);
+            height: 100%; /* Ocupa todo el alto disponible */
+        }
+
+        .editor-wrapper {
+            flex: 60; /* 60% del espacio */
+            position: relative;
         }
 
         #editor {
-            flex-grow: 1;
-            background-color: var(--color-editor-bg);
+            width: 100%;
+            height: 100%;
+            background-color: var(--color-bg-dark);
             color: var(--color-texto);
             border: none;
             padding: 15px;
@@ -81,18 +79,59 @@
             line-height: 1.6;
             resize: none;
             outline: none;
+            box-sizing: border-box; /* Importante */
         }
 
-        /* --- Consola --- */
+        .controls-bar {
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            padding: 10px 15px;
+            background-color: var(--color-bg-dark);
+            border-top: 1px solid var(--color-borde);
+            border-bottom: 1px solid var(--color-borde);
+        }
+
+        #run-button {
+            background-color: var(--color-rojo-btn);
+            color: #fff;
+            border: none;
+            padding: 8px 15px;
+            font-family: inherit;
+            font-size: 0.9em;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        #run-button:hover {
+            background-color: var(--color-rojo-btn-hover);
+        }
+
+        #status-text {
+            margin-left: 15px;
+            font-size: 0.9em;
+            color: var(--color-texto-secundario);
+        }
+        #status-text.error {
+            color: var(--color-rojo);
+            font-weight: bold;
+        }
+        #status-text.success {
+            color: var(--color-verde);
+            font-weight: bold;
+        }
+
+
         .console-wrapper {
-            flex: 1; /* Ocupa el espacio inferior */
+            flex: 40; /* 40% del espacio */
             display: flex;
             flex-direction: column;
             background-color: var(--color-consola-bg);
-            border-top: 2px solid var(--color-borde);
             font-size: 1.1em;
             overflow-y: hidden;
             padding: 15px;
+            box-sizing: border-box;
         }
 
         #console-output {
@@ -100,22 +139,22 @@
             overflow-y: auto;
             white-space: pre-wrap;
             word-wrap: break-word;
-            padding-bottom: 10px;
         }
         
-        #console-output .line {
-            margin-bottom: 5px;
-        }
+        /* Clases de líneas de la consola */
+        #console-output .line { margin-bottom: 5px; }
         #console-output .line-error { color: var(--color-rojo); }
         #console-output .line-success { color: var(--color-verde); }
         #console-output .line-info { color: var(--color-azul); }
         #console-output .line-warn { color: var(--color-amarillo); }
-        #console-output .line-cmd { color: #888; }
+        #console-output .line-cmd { color: var(--color-texto-secundario); }
         #console-output .line-sim-output { color: var(--color-texto); }
-        
+        #console-output .line-sim-prompt { color: var(--color-verde); }
+
         .input-line {
             display: flex;
             flex-shrink: 0;
+            background-color: var(--color-consola-bg); /* Fondo sólido */
         }
 
         .prompt {
@@ -144,35 +183,120 @@
             vertical-align: bottom;
             margin-left: 2px;
         }
-
         @keyframes blink {
             from, to { background-color: transparent }
             50% { background-color: var(--color-verde) }
         }
 
+
+        /* --- Panel Derecho (Sidebar) --- */
+        .right-pane {
+            flex-basis: 250px; /* Ancho fijo */
+            flex-shrink: 0;
+            background-color: var(--color-bg-sidebar);
+            border-left: 1px solid var(--color-borde);
+            padding: 20px;
+            overflow-y: auto;
+            box-sizing: border-box;
+        }
+        
+        .right-pane h3 {
+            color: var(--color-rojo);
+            margin-top: 0;
+            border-bottom: 1px solid var(--color-borde);
+            padding-bottom: 10px;
+        }
+
+        .file-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .file-list li {
+            padding: 10px 5px;
+            margin-bottom: 5px;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: background-color 0.2s;
+            color: var(--color-texto-secundario);
+        }
+        .file-list li:hover {
+            background-color: #2a2a2a;
+            color: var(--color-texto);
+        }
+        .file-list li.active {
+            background-color: var(--color-rojo-btn);
+            color: #fff;
+            font-weight: bold;
+        }
+
+        #upload-button {
+            display: block;
+            width: 100%;
+            padding: 10px 5px;
+            margin-top: 20px;
+            background-color: var(--color-borde);
+            color: var(--color-texto);
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: inherit;
+            text-align: left;
+            font-size: 1em;
+        }
+        #upload-button:hover {
+            background-color: #333;
+        }
+        .upload-info {
+            font-size: 0.8em;
+            color: var(--color-texto-secundario);
+            margin-top: 10px;
+        }
+
+
         #file-uploader {
             display: none;
         }
+
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <div class="tab-bar" id="tab-bar">
+    <div class="studio-container">
+        <header>YTDOWNLOAD Studio</header>
+        
+        <main class="main-content">
+            <div class="left-pane">
+                
+                <div class="editor-wrapper">
+                    <textarea id="editor" spellcheck="false" autocomplete="off"></textarea>
+                </div>
+
+                <div class="controls-bar">
+                    <button id="run-button">► Ejecutar Código</button>
+                    <span id="status-text">Estado: Listo</span>
+                </div>
+
+                <div class="console-wrapper" id="console-wrapper">
+                    <div id="console-output"></div>
+                    <div class="input-line">
+                        <span class="prompt" id="prompt-text">></span>
+                        <input type="text" id="console-input">
+                        <span class="cursor"></span>
+                    </div>
+                </div>
+
             </div>
 
-        <div class="editor-container">
-            <textarea id="editor" spellcheck="false" autocomplete="off"></textarea>
-        </div>
+            <aside class="right-pane">
+                <h3>Archivos</h3>
+                <ul class="file-list" id="file-list">
+                    </ul>
 
-        <div class="console-wrapper" id="console-wrapper">
-            <div id="console-output"></div>
-            <div class="input-line">
-                <span class="prompt" id="prompt-text">></span>
-                <input type="text" id="console-input">
-                <span class="cursor"></span>
-            </div>
-        </div>
+                <button id="upload-button">Subir archivo .txt</button>
+                <p class="upload-info">Los archivos subidos crean nuevas pestañas editables.</p>
+            </aside>
+        </main>
     </div>
     
     <input type="file" id="file-uploader" accept=".txt">
@@ -182,35 +306,35 @@
     // 1. ESTADO Y DATOS INICIALES
     // ==================================================================
     
-    // Contenido de los archivos base
+    // Contenido de los archivos base (CÓDIGO CORREGIDO SIN PUNTO Y COMA)
     const initialFiles = {
-        'descarga_simple.txt': 
+        'simple.ytd': 
 `FUNCION main() {
-    VAR link = '';
-    IMPRIMIR 'Ingresa la URL del video:';
-    LEER link;
-    descargar(link, mp4, 'Video1', 'C:/Videos');
+    VAR link = ''
+    IMPRIMIR 'Ingresa la URL del video:'
+    LEER link
+    descargar(link, mp4, 'Video1', 'C:/Videos')
 } FIN!`,
         
-        'descarga_playlist.txt':
+        'playlist.ytd':
 `FUNCION main() {
-    VAR playlist = '';
-    IMPRIMIR 'Ingresa la URL de la PLAYLIST:';
-    LEER playlist;
+    VAR playlist = ''
+    IMPRIMIR 'Ingresa la URL de la PLAYLIST:'
+    LEER playlist
     PARA CADA video EN playlist HACER {
-        descargar(video.url, mp3, video.nombre, 'C:/Musica/Playlist');
+        descargar(video.url, mp3, video.nombre, 'C:/Musica/Playlist')
     } FIN;
 } FIN!`,
         
-        'descarga_condicional.txt':
+        'formatos.ytd':
 `FUNCION main() {
-    VAR enlaces = ['https://youtu.be/v001' AS 'edits', 'https://youtu.be/v002' AS 'Clase1'];
-    VAR formato = '';
-    IMPRIMIR 'Selecciona el formato: (mp3/mp4/mkv)';
-    LEER formato;
+    VAR enlaces = ['https://youtu.be/v001' AS 'edits', 'https://youtu.be/v002' AS 'Clase1']
+    VAR formato = ''
+    IMPRIMIR 'Selecciona el formato: (mp3/mp4/mkv)'
+    LEER formato
     PARA CADA e EN enlaces HACER {
         SI formato ENTONCES {
-            descargar(e.url, mp4, e.nombre, 'D:/Videos');
+            descargar(e.url, mp4, e.nombre, 'D:/Videos')
         }
     } FIN;
 } FIN!`
@@ -218,7 +342,7 @@
 
     // Estado de la aplicación
     let tabData = { ...initialFiles };
-    let activeTabId = 'descarga_simple.txt';
+    let activeFile = 'simple.ytd';
     let consoleMode = 'command'; // 'command' | 'simulation'
     let currentSimulation = null; // Almacenará el generador de simulación
     let simulationInputResolve = null; // Función para resolver la promesa de LEER
@@ -227,20 +351,22 @@
     // 2. ELEMENTOS DEL DOM
     // ==================================================================
     
-    const tabBar = document.getElementById('tab-bar');
+    const fileList = document.getElementById('file-list');
     const editor = document.getElementById('editor');
     const consoleWrapper = document.getElementById('console-wrapper');
     const consoleOutput = document.getElementById('console-output');
     const consoleInput = document.getElementById('console-input');
     const promptText = document.getElementById('prompt-text');
     const fileUploader = document.getElementById('file-uploader');
+    const runButton = document.getElementById('run-button');
+    const statusText = document.getElementById('status-text');
+    const uploadButton = document.getElementById('upload-button');
 
     // ==================================================================
     // 3. ANALIZADOR LÉXICO (Fiel a C++)
     // ==================================================================
     
     const TokenType = {
-        // Palabras Clave
         FUNCION: 'FUNCION', MAIN: 'main', FIN_FUNCION: 'FIN!',
         VAR: 'VAR',
         IMPRIMIR: 'IMPRIMIR', LEER: 'LEER',
@@ -248,22 +374,16 @@
         SI: 'SI', ENTONCES: 'ENTONCES',
         DESCARGAR: 'descargar',
         AS: 'AS',
-
-        // Símbolos
         PAREN_IZQ: '(', PAREN_DER: ')',
         LLAVE_IZQ: '{', LLAVE_DER: '}',
         CORCH_IZQ: '[', CORCH_DER: ']',
-        PUNTO_COMA: ';',
+        PUNTO_COMA: ';', // Aún lo reconocemos, pero no lo exigimos
         COMA: ',',
         ASIGNAR: '=',
         PUNTO: '.',
-
-        // Literales y Tipos
         IDENTIFICADOR: 'IDENTIFICADOR',
         STRING: 'STRING',
-        TIPO_DATO: 'TIPO_DATO', // mp3, mp4, mkv
-
-        // Fin de archivo
+        TIPO_DATO: 'TIPO_DATO',
         EOF: 'EOF'
     };
 
@@ -292,7 +412,6 @@
         while (pos < code.length) {
             let char = code[pos];
 
-            // 1. Espacios en blanco y saltos de línea
             if (esEspacio(char)) {
                 pos++;
                 col++;
@@ -305,7 +424,6 @@
                 continue;
             }
 
-            // 2. Símbolos simples
             const simbolos = {
                 '(': TokenType.PAREN_IZQ, ')': TokenType.PAREN_DER,
                 '{': TokenType.LLAVE_IZQ, '}': TokenType.LLAVE_DER,
@@ -320,7 +438,6 @@
                 continue;
             }
 
-            // 3. Strings (literales de cadena)
             if (char === "'") {
                 let startPos = pos + 1;
                 let endPos = code.indexOf("'", startPos);
@@ -335,8 +452,6 @@
                 continue;
             }
             
-            // 4. Identificadores, Palabras Clave y FIN! / FIN;
-            // Manejo especial para 'FIN!' y 'FIN;'
             if (char === 'F' && code.substring(pos, pos + 4) === 'FIN!') {
                  tokens.push({ type: TokenType.FIN_FUNCION, value: 'FIN!', linea, col });
                  pos += 4; col += 4;
@@ -360,7 +475,6 @@
                 continue;
             }
 
-            // 5. Carácter no reconocido
             return { error: `Error Léxico (L:${linea}, C:${col}): Carácter no reconocido '${char}'.` };
         }
 
@@ -379,15 +493,19 @@
         return `Error Sintáctico (L:${token.linea}, C:${token.col}): ${mensaje}. Se obtuvo '${token.value}'.`;
     }
 
-    // Funciones de ayuda del parser
+    // --- Funciones de ayuda del parser (CON ERRORES CORREGIDOS) ---
     const peek = () => parserTokens[parserPos];
     const previous = () => parserTokens[parserPos - 1];
+    
+    // ** BUG FIX 1: 'check' e 'isAtEnd' simplificados **
     const isAtEnd = () => peek().type === TokenType.EOF;
+    const check = (type) => peek().type === type;
+    
     const advance = () => { if (!isAtEnd()) parserPos++; return previous(); };
-    const check = (type) => isAtEnd() ? false : peek().type === type;
     
     const match = (...types) => {
         for (const type of types) {
+            // Usamos 'check' que ahora funciona correctamente con EOF
             if (check(type)) {
                 advance();
                 return true;
@@ -409,18 +527,17 @@
         let ast = [];
         
         try {
-            // El programa debe empezar con FUNCION main() { ... } FIN!
             consume(TokenType.FUNCION, "Se esperaba 'FUNCION'");
             consume(TokenType.MAIN, "Se esperaba 'main'");
             consume(TokenType.PAREN_IZQ, "Se esperaba '(' después de 'main'");
             consume(TokenType.PAREN_DER, "Se esperaba ')' después de 'main'");
             consume(TokenType.LLAVE_IZQ, "Se esperaba '{' para iniciar el bloque 'main'");
             
-            ast = parseBlock(); // Parsea el contenido del main
+            ast = parseBlock();
 
             consume(TokenType.LLAVE_DER, "Se esperaba '}' para cerrar el bloque 'main'");
             consume(TokenType.FIN_FUNCION, "Se esperaba 'FIN!' al final del programa");
-            consume(TokenType.EOF, "No debería haber más código después de 'FIN!'");
+            consume(TokenType.EOF, "Se esperaba el fin del archivo después de 'FIN!'"); // Mensaje corregido
 
             return { ast: { type: 'Program', body: ast } };
         } catch (error) {
@@ -430,7 +547,7 @@
 
     function parseBlock() {
         let statements = [];
-        while (!check(TokenType.LLAVE_DER) && !check(TokenType.EOF)) {
+        while (!check(TokenType.LLAVE_DER) && !isAtEnd()) {
             statements.push(parseStatement());
         }
         return statements;
@@ -444,6 +561,11 @@
         if (match(TokenType.PARA)) return parseParaCadaStatement();
         if (match(TokenType.SI)) return parseSiStatement();
         
+        // ** BUG FIX 2: Omitir puntos y comas opcionales **
+        if (match(TokenType.PUNTO_COMA)) {
+            return { type: 'EmptyStatement' }; // No hacer nada, solo consumirlo
+        }
+        
         throw new Error(parseError(peek(), "Instrucción no reconocida"));
     }
 
@@ -455,7 +577,6 @@
         if (check(TokenType.STRING)) {
             initializer = { type: 'Literal', value: advance().value };
         } else if (check(TokenType.CORCH_IZQ)) {
-            // Parseo de Array
             initializer = { type: 'ArrayLiteral', elements: [] };
             advance(); // Consume '['
             while (!check(TokenType.CORCH_DER) && !isAtEnd()) {
@@ -463,7 +584,6 @@
                 consume(TokenType.AS, "Se esperaba 'AS' después de la URL");
                 const nombre = consume(TokenType.STRING, "Se esperaba un string (nombre) después de 'AS'").value;
                 initializer.elements.push({ url, nombre });
-                
                 if (!match(TokenType.COMA)) break;
             }
             consume(TokenType.CORCH_DER, "Se esperaba ']' para cerrar el array");
@@ -471,28 +591,29 @@
             throw new Error(parseError(peek(), "Se esperaba un valor (string o array) para la variable"));
         }
         
-        consume(TokenType.PUNTO_COMA, "Se esperaba ';' al final de la declaración VAR");
+        // ** BUG FIX 2: Semicolon opcional **
+        match(TokenType.PUNTO_COMA); 
         return { type: 'VarDeclaration', name, initializer };
     }
 
     function parseImprimirStatement() {
         const value = consume(TokenType.STRING, "Se esperaba un string después de 'IMPRIMIR'").value;
-        consume(TokenType.PUNTO_COMA, "Se esperaba ';' al final de 'IMPRIMIR'");
+        // ** BUG FIX 2: Semicolon opcional **
+        match(TokenType.PUNTO_COMA);
         return { type: 'ImprimirStatement', value };
     }
     
     function parseLeerStatement() {
         const variable = consume(TokenType.IDENTIFICADOR, "Se esperaba un nombre de variable después de 'LEER'").value;
-        consume(TokenType.PUNTO_COMA, "Se esperaba ';' al final de 'LEER'");
+        // ** BUG FIX 2: Semicolon opcional **
+        match(TokenType.PUNTO_COMA);
         return { type: 'LeerStatement', variable };
     }
 
     function parseDescargarStatement() {
-        // descargar(link, mp4, 'Video1', 'C:/Videos');
         const args = [];
         consume(TokenType.PAREN_IZQ, "Se esperaba '(' después de 'descargar'");
         
-        // 1. URL (Identificador o String)
         if (check(TokenType.IDENTIFICADOR) || check(TokenType.STRING) || check(TokenType.PUNTO)) {
             args.push(parseExpression());
         } else {
@@ -501,7 +622,6 @@
         
         consume(TokenType.COMA, "Se esperaba ',' después de la URL");
 
-        // 2. Formato (Identificador o Tipo_Dato)
         if (check(TokenType.IDENTIFICADOR) || check(TokenType.TIPO_DATO)) {
             args.push(parseExpression());
         } else {
@@ -510,7 +630,6 @@
 
         consume(TokenType.COMA, "Se esperaba ',' después del formato");
 
-        // 3. Nombre (Identificador o String)
          if (check(TokenType.IDENTIFICADOR) || check(TokenType.STRING) || check(TokenType.PUNTO)) {
             args.push(parseExpression());
         } else {
@@ -519,7 +638,6 @@
 
         consume(TokenType.COMA, "Se esperaba ',' después del nombre");
 
-        // 4. Ruta (String)
         if (check(TokenType.STRING)) {
             args.push(parseExpression());
         } else {
@@ -527,13 +645,13 @@
         }
         
         consume(TokenType.PAREN_DER, "Se esperaba ')' después de los argumentos de 'descargar'");
-        consume(TokenType.PUNTO_COMA, "Se esperaba ';' al final de 'descargar'");
+        // ** BUG FIX 2: Semicolon opcional **
+        match(TokenType.PUNTO_COMA);
         
         return { type: 'DescargarStatement', arguments: args };
     }
     
     function parseParaCadaStatement() {
-        // PARA CADA video EN playlist HACER { ... } FIN;
         consume(TokenType.CADA, "Se esperaba 'CADA' después de 'PARA'");
         const iteratorVar = consume(TokenType.IDENTIFICADOR, "Se esperaba un nombre de variable (iterador)").value;
         consume(TokenType.EN, "Se esperaba 'EN'");
@@ -550,7 +668,6 @@
     }
     
     function parseSiStatement() {
-        // SI formato ENTONCES { ... }
         const condition = consume(TokenType.IDENTIFICADOR, "Se esperaba una variable como condición para 'SI'").value;
         consume(TokenType.ENTONCES, "Se esperaba 'ENTONCES' después de la condición");
         consume(TokenType.LLAVE_IZQ, "Se esperaba '{' para iniciar el bloque 'SI'");
@@ -572,7 +689,6 @@
         
         if (match(TokenType.IDENTIFICADOR)) {
             const id = previous().value;
-            // Maneja acceso a propiedades (ej: video.url, video.nombre)
             if (match(TokenType.PUNTO)) {
                 const property = consume(TokenType.IDENTIFICADOR, "Se esperaba nombre de propiedad (url, nombre) después de '.'").value;
                 return { type: 'MemberExpression', object: id, property: property };
@@ -589,24 +705,15 @@
     // ==================================================================
 
     class Environment {
-        constructor() {
-            this.variables = new Map();
-        }
-        // Define una variable (VAR)
-        define(name, value) {
-            this.variables.set(name, value);
-        }
-        // Asigna un valor a una variable existente (LEER)
+        constructor() { this.variables = new Map(); }
+        define(name, value) { this.variables.set(name, value); }
         assign(name, value) {
-            if (!this.variables.has(name)) {
-                // En esta simulación, LEER puede definir la variable si no existe (como en el VAR link = '')
-                this.define(name, value);
-                // throw new Error(`Simulación: Variable no definida '${name}'.`);
+            if (!this.variables.has(name) && name.length > 0) { // Permite definir con LEER
+                 this.define(name, value);
             } else {
                  this.variables.set(name, value);
             }
         }
-        // Obtiene el valor de una variable
         get(name) {
             if (!this.variables.has(name)) {
                 throw new Error(`Simulación: Variable no definida '${name}'.`);
@@ -616,6 +723,7 @@
     }
 
     async function* simulationGenerator(astNode, environment) {
+        if (!astNode) yield; // Ignorar nodos nulos (ej. EmptyStatement)
         
         switch (astNode.type) {
             case 'Program':
@@ -623,80 +731,71 @@
                     yield* simulationGenerator(statement, environment);
                 }
                 break;
-
+            case 'EmptyStatement':
+                // No hacer nada
+                break;
             case 'VarDeclaration':
                 let initValue;
                 if (astNode.initializer.type === 'Literal') {
                     initValue = astNode.initializer.value;
                 } else if (astNode.initializer.type === 'ArrayLiteral') {
-                    // El array ya está parseado
                     initValue = astNode.initializer.elements;
                 }
                 environment.define(astNode.name, initValue);
                 break;
-
             case 'ImprimirStatement':
-                // Salida de la simulación
                 writeToConsole(astNode.value, 'line-sim-output');
                 break;
-
             case 'LeerStatement':
-                // Pausa la simulación y espera input
-                const prompt = (consoleOutput.lastChild && consoleOutput.lastChild.textContent.endsWith(':') ? "" : "> ");
-                const input = yield { type: 'input', prompt: prompt }; // Señal de pausa
+                // Extraer el prompt de la última línea de salida
+                let lastLine = consoleOutput.lastChild ? consoleOutput.lastChild.textContent : "";
+                if (lastLine.endsWith('\n')) lastLine = ""; // Si la última fue un enter, no hay prompt
+                
+                writeToConsole(lastLine, 'line-sim-prompt'); // Repetir la última línea como prompt
+                if (consoleOutput.lastChild) { // Borrar la línea de IMPRIMIR original
+                    consoleOutput.removeChild(consoleOutput.lastChild.previousSibling);
+                }
+
+                const input = yield { type: 'input' }; // Señal de pausa
                 environment.assign(astNode.variable, input);
                 break;
-
             case 'DescargarStatement':
-                // Evalúa los argumentos antes de usarlos
                 const args = [];
                 for(const argNode of astNode.arguments) {
                     args.push(yield* evaluateExpression(argNode, environment));
                 }
-                
                 const [url, formato, nombre, ruta] = args;
-                
                 writeToConsole(`→ Descargando '${nombre}.${formato}' desde ${url} ...`, 'line-info');
-                await sleep(2000 + Math.random() * 1000); // Simula tiempo de descarga
+                await sleep(1500 + Math.random() * 1000); 
                 writeToConsole(`✅ Descarga completada. Guardado en: ${ruta}`, 'line-success');
                 break;
-
             case 'ParaCadaStatement':
                 const array = environment.get(astNode.arrayVar);
                 if (!Array.isArray(array)) {
                     throw new Error(`Simulación: '${astNode.arrayVar}' no es un array (en PARA CADA).`);
                 }
-                
-                // Crea un nuevo scope para el iterador
                 const loopEnv = new Environment();
-                loopEnv.variables = new Map(environment.variables); // Hereda
-                
+                loopEnv.variables = new Map(environment.variables);
                 for (const item of array) {
-                    // Define la variable iteradora (ej: 'video' o 'e')
                     loopEnv.define(astNode.iteratorVar, item);
-                    // Ejecuta el bloque
                     for (const statement of astNode.body) {
                         yield* simulationGenerator(statement, loopEnv);
                     }
                 }
                 break;
-                
             case 'SiStatement':
                 const conditionValue = environment.get(astNode.condition);
-                // Simple chequeo de "existencia" (no vacío)
-                if (conditionValue) {
+                if (conditionValue) { // Chequeo simple
                     for (const statement of astNode.body) {
                         yield* simulationGenerator(statement, environment);
                     }
                 }
                 break;
-
             default:
                 throw new Error(`Simulación: Nodo AST no reconocido '${astNode.type}'.`);
         }
     }
     
-    // Función de ayuda para evaluar expresiones (devuelve el valor)
     function* evaluateExpression(node, environment) {
         switch(node.type) {
             case 'Literal':
@@ -704,8 +803,7 @@
             case 'Identifier':
                 return environment.get(node.name);
             case 'MemberExpression':
-                // ej: video.url
-                const object = environment.get(node.object); // Obtiene el objeto 'video'
+                const object = environment.get(node.object); 
                 if (typeof object !== 'object' || object === null) {
                     throw new Error(`Simulación: '${node.object}' no es un objeto.`);
                 }
@@ -718,69 +816,74 @@
     // ==================================================================
 
     function init() {
-        // 1. Cargar pestañas iniciales
-        Object.keys(tabData).forEach(filename => createTab(filename));
+        // 1. Cargar archivos en la sidebar
+        Object.keys(tabData).forEach(filename => createFileInSidebar(filename));
         
-        // 2. Activar la primera pestaña
-        switchTab(activeTabId);
+        // 2. Activar el primer archivo
+        switchFile(activeFile);
         
         // 3. Listeners
-        tabBar.addEventListener('click', handleTabClick);
+        fileList.addEventListener('click', handleFileClick);
         editor.addEventListener('input', handleEditorInput);
         consoleInput.addEventListener('keydown', handleConsoleKeyDown);
         consoleWrapper.addEventListener('click', () => consoleInput.focus());
         fileUploader.addEventListener('change', handleFileUpload);
+        runButton.addEventListener('click', runAnalysisAndSimulation);
+        uploadButton.addEventListener('click', () => fileUploader.click());
         
         // 4. Mensaje de bienvenida
-        writeToConsole('--- YTDOWNLOAD Studio (Consola Fiel a C++) ---', 'line-warn');
-        writeToConsole('Escriba "ejecutar" para analizar y simular el código de la pestaña activa.');
-        writeToConsole('Escriba "subir" para cargar un archivo .txt.');
-        writeToConsole('Escriba "limpiar" para limpiar esta consola.');
+        writeToConsole('--- YTDOWNLOAD Studio ---', 'line-warn');
+        writeToConsole('Seleccione un archivo y presione "Ejecutar Código".');
         
-        consoleInput.focus();
+        // Ocultar la línea de input de la consola al inicio
+        setConsoleMode('simulation'); // Poner en modo 'simulación' oculta el prompt
+        promptText.textContent = "";
     }
 
-    function createTab(filename) {
-        const tab = document.createElement('div');
-        tab.className = 'tab';
-        tab.dataset.tabId = filename;
-        tab.textContent = filename;
-        tabBar.appendChild(tab);
-        return tab;
+    function createFileInSidebar(filename) {
+        const li = document.createElement('li');
+        li.dataset.fileId = filename;
+        li.textContent = filename;
+        fileList.appendChild(li);
+        return li;
     }
 
-    function switchTab(tabId) {
-        // Actualizar estado
-        activeTabId = tabId;
+    function switchFile(filename) {
+        activeFile = filename;
         
-        // Actualizar UI de pestañas
-        document.querySelectorAll('.tab').forEach(t => {
-            t.classList.toggle('active', t.dataset.tabId === tabId);
+        // Actualizar UI de la sidebar
+        document.querySelectorAll('.file-list li').forEach(li => {
+            li.classList.toggle('active', li.dataset.fileId === filename);
         });
         
         // Cargar código en el editor
-        editor.value = tabData[tabId] || '';
+        editor.value = tabData[filename] || '';
         
-        // No ejecutamos automáticamente, solo informamos
-        writeToConsole(`Pestaña activa: ${tabId}. Escriba "ejecutar".`, 'line-cmd');
-        cancelSimulation(); // Detiene cualquier simulación en curso
+        // Resetear estado
+        updateStatus('Listo');
+        cancelSimulation();
         consoleInput.focus();
+    }
+
+    function updateStatus(message, isError = false, isSuccess = false) {
+        statusText.textContent = `Estado: ${message}`;
+        statusText.classList.toggle('error', isError);
+        statusText.classList.toggle('success', isSuccess);
     }
     
     // --- Manejadores de Eventos ---
 
-    function handleTabClick(e) {
-        if (e.target.classList.contains('tab')) {
-            const tabId = e.target.dataset.tabId;
-            if (tabId !== activeTabId) {
-                switchTab(tabId);
+    function handleFileClick(e) {
+        if (e.target.tagName === 'LI') {
+            const filename = e.target.dataset.fileId;
+            if (filename !== activeFile) {
+                switchFile(filename);
             }
         }
     }
 
     function handleEditorInput() {
-        // Guardar cambios en el estado
-        tabData[activeTabId] = editor.value;
+        tabData[activeFile] = editor.value;
     }
 
     async function handleConsoleKeyDown(e) {
@@ -789,38 +892,14 @@
         const input = consoleInput.value;
         consoleInput.value = '';
         
-        if (consoleMode === 'simulation') {
+        if (consoleMode === 'simulation' && simulationInputResolve) {
             // Estamos esperando un LEER
             writeToConsole(input, 'line-sim-output'); // Muestra lo que el usuario escribió
-            if (simulationInputResolve) {
-                simulationInputResolve(input); // Resuelve la promesa de LEER
-                simulationInputResolve = null; // Limpia el resolver
-                await advanceSimulation(); // Continúa la simulación
-            }
-        } else {
-            // Estamos en modo comando
-            writeToConsole(`${promptText.textContent}${input}`, 'line-cmd');
-            
-            // Procesar comando
-            const cmd = input.trim().toLowerCase();
-            switch (cmd) {
-                case 'ejecutar':
-                    runAnalysisAndSimulation();
-                    break;
-                case 'subir':
-                    fileUploader.click();
-                    break;
-                case 'limpiar':
-                    consoleOutput.innerHTML = '';
-                    break;
-                case '':
-                    break; // No hacer nada si está vacío
-                default:
-                    writeToConsole(`Comando no reconocido: "${input}"`, 'line-error');
-            }
+            simulationInputResolve(input); // Resuelve la promesa de LEER
+            simulationInputResolve = null;
+            await advanceSimulation(); // Continúa la simulación
         }
-        
-        consoleWrapper.scrollTop = consoleWrapper.scrollHeight;
+        // Si no estamos esperando input, no hacer nada con 'Enter'
     }
 
     function handleFileUpload(e) {
@@ -832,32 +911,31 @@
             const content = event.target.result;
             const filename = file.name;
             
-            // Añadir al estado y crear la pestaña
             tabData[filename] = content;
-            createTab(filename);
-            
-            // Cambiar a la nueva pestaña
-            switchTab(filename);
+            createFileInSidebar(filename);
+            switchFile(filename);
         };
         reader.onerror = () => {
             writeToConsole(`Error leyendo el archivo ${file.name}`, 'line-error');
         };
         reader.readAsText(file);
-        
-        // Resetear para poder subir el mismo archivo de nuevo
-        e.target.value = null;
+        e.target.value = null; // Resetear
     }
     
     // --- Flujo de Ejecución ---
 
     function runAnalysisAndSimulation() {
-        const code = tabData[activeTabId];
-        writeToConsole(`Iniciando análisis para ${activeTabId}...`, 'line-info');
+        const code = tabData[activeFile];
+        
+        // Limpiar consola e iniciar
+        consoleOutput.innerHTML = '';
+        writeToConsole(`Iniciando análisis para ${activeFile}...`, 'line-info');
         
         // 1. Análisis Léxico
         const lexerResult = analizarLexico(code);
         if (lexerResult.error) {
             writeToConsole(lexerResult.error, 'line-error');
+            updateStatus('Error Léxico', true);
             return;
         }
         writeToConsole('✓ Análisis Léxico completado.', 'line-success');
@@ -866,9 +944,11 @@
         const parserResult = analizarSintactico(lexerResult.tokens);
         if (parserResult.error) {
             writeToConsole(parserResult.error, 'line-error');
+            updateStatus('Error Sintáctico', true);
             return;
         }
         writeToConsole('✓ Análisis Sintáctico completado.', 'line-success');
+        updateStatus('Análisis exitoso', false, true);
 
         // 3. Iniciar Simulación
         writeToConsole('→ Ejecutando simulación de descarga...', 'line-warn');
@@ -877,10 +957,9 @@
     
     function startSimulation(ast) {
         const environment = new Environment();
-        currentSimulation = simulationGenerator(ast, environment); // Inicia el generador
-        consoleMode = 'simulation';
-        promptText.textContent = ""; // Oculta el prompt base
-        advanceSimulation(); // Arranca el primer paso
+        currentSimulation = simulationGenerator(ast, environment);
+        setConsoleMode('simulation');
+        advanceSimulation();
     }
 
     async function advanceSimulation() {
@@ -890,13 +969,12 @@
             const result = await currentSimulation.next();
             
             if (result.done) {
-                // Simulación terminada
                 writeToConsole('--- Simulación finalizada ---', 'line-warn');
+                updateStatus('Simulación completada', false, true);
                 cancelSimulation();
             } else if (result.value && result.value.type === 'input') {
                 // Pausa para LEER
-                promptText.textContent = result.value.prompt || "> "; // Muestra el prompt de LEER
-                // Crea la promesa que será resuelta por handleConsoleKeyDown
+                setConsoleMode('command'); // Muestra el prompt para input
                 await new Promise(resolve => {
                     simulationInputResolve = resolve;
                 });
@@ -904,15 +982,26 @@
             
         } catch (error) {
             writeToConsole(`Error de Simulación: ${error.message}`, 'line-error');
+            updateStatus('Error en Simulación', true);
             cancelSimulation();
         }
     }
     
     function cancelSimulation() {
-        consoleMode = 'command';
-        promptText.textContent = "> ";
+        setConsoleMode('simulation'); // Oculta el prompt
+        promptText.textContent = "";
         currentSimulation = null;
         simulationInputResolve = null;
+    }
+
+    function setConsoleMode(mode) {
+        consoleMode = mode;
+        if (mode === 'command') {
+            promptText.textContent = "> ";
+            consoleInput.focus();
+        } else {
+            promptText.textContent = "";
+        }
     }
 
     // ==================================================================
