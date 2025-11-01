@@ -1,161 +1,198 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>YTDOWNLOAD Studio</title>
-<style>
-  :root {--bg:#0b0b0b;--panel:#121212;--muted:#9aa0a6;--accent:#ff4444;--green:#00ff66;}
-  html,body{height:100%;margin:0;background:var(--bg);color:#e6e6e6;font-family:Consolas,monospace;}
-  header{background:var(--panel);padding:12px;font-weight:700;color:var(--accent);border-bottom:2px solid var(--accent);text-align:center}
-  nav{display:flex;justify-content:center;gap:6px;padding:8px;background:#111;border-bottom:1px solid #222}
-  nav .tab{padding:8px 14px;border-radius:4px;color:#ddd;cursor:pointer}
-  nav .tab.active{background:#171717;color:var(--accent)}
-  main{display:flex;gap:16px;padding:16px;height:calc(100% - 120px);box-sizing:border-box}
-  textarea{flex:1;background:#0e0e0e;border:1px solid #2b2b2b;color:#fff;padding:12px;resize:none;font-size:13px}
-  .run-btn{background:var(--accent);border:none;color:#fff;padding:10px 14px;border-radius:6px;cursor:pointer}
-  .console{background:#000;border:1px solid #222;padding:10px;height:240px;overflow:auto;color:var(--green);font-family:monospace;font-size:13px}
-  .sidebar{width:220px;background:#0f0f0f;border:1px solid #222;padding:10px;border-radius:6px}
-  .file{background:#111;padding:8px;margin:6px 0;border-radius:6px;border:1px solid #222;cursor:pointer;text-align:center}
-  .upload{background:#111;text-align:center;cursor:pointer}
-  .error{color:#ff6666}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YTDOWNLOAD Studio (Fiel a C++)</title>
+    <style>
+        :root {
+            --color-bg: #0a0a0a;
+            --color-editor-bg: #1a1a1a;
+            --color-consola-bg: #0d0d0d;
+            --color-texto: #e0e0e0;
+            --color-verde: #00ff41;
+            --color-rojo: #ff4141;
+            --color-azul: #41a6ff;
+            --color-amarillo: #f0f000;
+            --color-borde: #333;
+            --color-tab: #222;
+            --color-tab-active: #0d0d0d;
+        }
+
+        html, body {
+            height: 100%;
+            margin: 0;
+            font-family: 'Consolas', 'Monaco', monospace;
+            background-color: var(--color-bg);
+            color: var(--color-texto);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            width: 100%;
+        }
+
+        /* --- Pestañas --- */
+        .tab-bar {
+            display: flex;
+            background-color: var(--color-bg);
+            border-bottom: 1px solid var(--color-borde);
+            flex-shrink: 0;
+        }
+
+        .tab {
+            padding: 10px 15px;
+            cursor: pointer;
+            background-color: var(--color-tab);
+            border-right: 1px solid var(--color-borde);
+            white-space: nowrap;
+        }
+
+        .tab.active {
+            background-color: var(--color-tab-active);
+            color: var(--color-verde);
+            border-bottom: 2px solid var(--color-verde);
+            margin-bottom: -1px; /* Alinea con el borde */
+        }
+
+        .tab:hover:not(.active) {
+            background-color: #333;
+        }
+
+        /* --- Editor --- */
+        .editor-container {
+            flex: 1; /* Ocupa el espacio superior */
+            display: flex;
+            min-height: 200px;
+        }
+
+        #editor {
+            flex-grow: 1;
+            background-color: var(--color-editor-bg);
+            color: var(--color-texto);
+            border: none;
+            padding: 15px;
+            font-family: inherit;
+            font-size: 1.1em;
+            line-height: 1.6;
+            resize: none;
+            outline: none;
+        }
+
+        /* --- Consola --- */
+        .console-wrapper {
+            flex: 1; /* Ocupa el espacio inferior */
+            display: flex;
+            flex-direction: column;
+            background-color: var(--color-consola-bg);
+            border-top: 2px solid var(--color-borde);
+            font-size: 1.1em;
+            overflow-y: hidden;
+            padding: 15px;
+        }
+
+        #console-output {
+            flex-grow: 1;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            padding-bottom: 10px;
+        }
+        
+        #console-output .line {
+            margin-bottom: 5px;
+        }
+        #console-output .line-error { color: var(--color-rojo); }
+        #console-output .line-success { color: var(--color-verde); }
+        #console-output .line-info { color: var(--color-azul); }
+        #console-output .line-warn { color: var(--color-amarillo); }
+        #console-output .line-cmd { color: #888; }
+        #console-output .line-sim-output { color: var(--color-texto); }
+        
+        .input-line {
+            display: flex;
+            flex-shrink: 0;
+        }
+
+        .prompt {
+            color: var(--color-verde);
+            margin-right: 8px;
+            flex-shrink: 0;
+        }
+
+        #console-input {
+            flex-grow: 1;
+            background: transparent;
+            border: none;
+            color: var(--color-verde);
+            font-family: inherit;
+            font-size: inherit;
+            outline: none;
+            padding: 0;
+        }
+        
+        .cursor {
+            display: inline-block;
+            background-color: var(--color-verde);
+            width: 10px;
+            height: 1.2em;
+            animation: blink 1s step-end infinite;
+            vertical-align: bottom;
+            margin-left: 2px;
+        }
+
+        @keyframes blink {
+            from, to { background-color: transparent }
+            50% { background-color: var(--color-verde) }
+        }
+
+        #file-uploader {
+            display: none;
+        }
+    </style>
 </head>
 <body>
-<header>YTDOWNLOAD Studio</header>
-<nav id="tabs"></nav>
-<main>
-  <div style="flex:1;display:flex;flex-direction:column;gap:8px;">
-    <textarea id="code" spellcheck="false"></textarea>
-    <button class="run-btn" id="runBtn">▶ Ejecutar Código</button>
-    <div class="console" id="console"></div>
-  </div>
-  <div class="sidebar">
-    <h3>Archivos</h3>
-    <div class="file" onclick="loadExample(0)">simple.ytd</div>
-    <div class="file" onclick="loadExample(1)">playlist.ytd</div>
-    <div class="file" onclick="loadExample(2)">formatos.ytd</div>
-    <hr>
-    <div class="file upload" id="uploadBox">Subir .txt</div>
-    <input type="file" id="fileInput" accept=".txt" style="display:none">
-  </div>
-</main>
 
-<script>
-const TOK={FUNCION:0,VAR:1,IMPRIMIR:2,LEER:3,DESCARGAR:4,PARA:5,CADA:6,EN:7,HACER:8,SI:9,ENTONCES:10,MIENTRAS:11,FIN:12,MP3:13,MP4:14,CADENA:15,NUM:16,AP:17,CP:18,AL:19,CL:20,IG:21,COM:22,PC:23,PUN:24,ADM:25,MAIN:26,WAV:27,MKV:28,AVI:29,WEBM:30,FLAC:31,LB:32,RB:33,AS:34,ERROR:999,FIN:666};
+    <div class="container">
+        <div class="tab-bar" id="tab-bar">
+            </div>
 
-function tsBase(){
-  const k=new Map();
-  for(const [n,t] of Object.entries(TOK)) k.set(n,t);
-  return k;
-}
+        <div class="editor-container">
+            <textarea id="editor" spellcheck="false" autocomplete="off"></textarea>
+        </div>
 
-class Lexer{
-  constructor(s){this.s=s;this.i=0;this.len=s.length;}
-  isElem(c){return"(){}=,;.![]".includes(c);}
-  skip(){while(this.i<this.len&&/\s/.test(this.s[this.i]))this.i++;}
-  get(){
-    this.skip();if(this.i>=this.len)return TOK.FIN;
-    let c=this.s[this.i];
-    if(/[A-Za-z]/.test(c)){
-      let tmp="";
-      while(this.i<this.len&&/[A-Za-z0-9_]/.test(this.s[this.i]))tmp+=this.s[this.i++];
-      const up=tmp.toUpperCase();
-      if(TOK[up]!=null)return TOK[up];
-      return TOK.VAR;
-    }
-    if(/[0-9]/.test(c)){
-      while(this.i<this.len&&/[0-9.]/.test(this.s[this.i]))this.i++;
-      return TOK.NUM;
-    }
-    if(c=="'"){this.i++;while(this.i<this.len&&this.s[this.i]!="'")this.i++;this.i++;return TOK.CADENA;}
-    if(this.isElem(c)){this.i++;const map={'(':TOK.AP,')':TOK.CP,'{':TOK.AL,'}':TOK.CL,'=':TOK.IG,',':TOK.COM,';':TOK.PC,'.':TOK.PUN,'!':TOK.ADM,'[':TOK.LB,']':TOK.RB};return map[c]??TOK.ERROR;}
-    this.i++;return TOK.ERROR;
-  }
-  tokenize(){const t=[];while(true){let x=this.get();t.push(x);if(x===TOK.FIN||x===TOK.ERROR)break;}return t;}
-}
+        <div class="console-wrapper" id="console-wrapper">
+            <div id="console-output"></div>
+            <div class="input-line">
+                <span class="prompt" id="prompt-text">></span>
+                <input type="text" id="console-input">
+                <span class="cursor"></span>
+            </div>
+        </div>
+    </div>
+    
+    <input type="file" id="file-uploader" accept=".txt">
 
-class Parser{
-  constructor(tok){this.t=tok;this.p=0;this.e=0;this.fin=50;this.err=TOK.ERROR;
-    this.tab=Array.from({length:60},()=>Array(60).fill(this.err));
-    // agregamos soporte a LISTAS
-    this.tab[0][TOK.FUNCION]=1;
-    this.tab[1][TOK.MAIN]=2;
-    this.tab[2][TOK.AP]=3;
-    this.tab[3][TOK.CP]=4;
-    this.tab[4][TOK.AL]=5;
-    this.tab[5][TOK.VAR]=6;
-    this.tab[6][TOK.VAR]=7;
-    this.tab[7][TOK.IG]=8;
-    // aquí admitimos o CADENA o LB
-    this.tab[8][TOK.CADENA]=9;
-    this.tab[8][TOK.LB]=60; // lista
-    this.tab[9][TOK.PC]=10;
-    // LISTA: [ CADENA AS CADENA (, ...)? ]
-    this.tab[60][TOK.CADENA]=61;
-    this.tab[61][TOK.AS]=62;
-    this.tab[62][TOK.CADENA]=63;
-    this.tab[63][TOK.COM]=60; // repetir
-    this.tab[63][TOK.RB]=9;   // cerrar lista → ir a 9 (como si fuera cadena)
-    // resto igual
-    this.tab[10][TOK.IMPRIMIR]=11;
-    this.tab[11][TOK.CADENA]=12;
-    this.tab[12][TOK.PC]=13;
-    this.tab[13][TOK.LEER]=14;
-    this.tab[14][TOK.VAR]=15;
-    this.tab[15][TOK.PC]=16;
-    this.tab[16][TOK.PARA]=17;
-    this.tab[17][TOK.CADA]=18;
-    this.tab[18][TOK.VAR]=19;
-    this.tab[19][TOK.EN]=20;
-    this.tab[20][TOK.VAR]=21;
-    this.tab[21][TOK.HACER]=22;
-    this.tab[22][TOK.AL]=23;
-    this.tab[23][TOK.DESCARGAR]=24;
-    this.tab[24][TOK.AP]=25;
-    this.tab[25][TOK.VAR]=26;
-    this.tab[26][TOK.PUN]=27;
-    this.tab[27][TOK.VAR]=28;
-    this.tab[28][TOK.COM]=29;
-    this.tab[29][TOK.MP3]=30;
-    this.tab[30][TOK.COM]=31;
-    this.tab[31][TOK.VAR]=32;
-    this.tab[32][TOK.PUN]=33;
-    this.tab[33][TOK.VAR]=34;
-    this.tab[34][TOK.COM]=35;
-    this.tab[35][TOK.CADENA]=36;
-    this.tab[36][TOK.CP]=37;
-    this.tab[37][TOK.PC]=38;
-    this.tab[38][TOK.CL]=39;
-    this.tab[39][TOK.FIN]=40;
-    this.tab[40][TOK.PC]=41;
-    this.tab[41][TOK.CL]=42;
-    this.tab[42][TOK.FIN]=43;
-    this.tab[43][TOK.ADM]=44;
-    this.fin=44;
-  }
-  nxt(){return this.t[this.p++]??TOK.FIN;}
-  run(){
-    this.e=0;
-    while(true){
-      let tk=this.nxt();
-      if(tk===TOK.FIN)break;
-      let nx=this.tab[this.e][tk];
-      if(nx===this.err)return{ok:false,estado:this.e,token:tk,pos:this.p-1};
-      this.e=nx;
-      if(this.e===this.fin)return{ok:true};
-    }
-    return{ok:false,estado:this.e};
-  }
-}
-
-const examples=[
+    <script>
+    // ==================================================================
+    // 1. ESTADO Y DATOS INICIALES
+    // ==================================================================
+    
+    // Contenido de los archivos base
+    const initialFiles = {
+        'descarga_simple.txt': 
 `FUNCION main() {
     VAR link = '';
     IMPRIMIR 'Ingresa la URL del video:';
     LEER link;
     descargar(link, mp4, 'Video1', 'C:/Videos');
 } FIN!`,
+        
+        'descarga_playlist.txt':
 `FUNCION main() {
     VAR playlist = '';
     IMPRIMIR 'Ingresa la URL de la PLAYLIST:';
@@ -164,6 +201,8 @@ const examples=[
         descargar(video.url, mp3, video.nombre, 'C:/Musica/Playlist');
     } FIN;
 } FIN!`,
+        
+        'descarga_condicional.txt':
 `FUNCION main() {
     VAR enlaces = ['https://youtu.be/v001' AS 'edits', 'https://youtu.be/v002' AS 'Clase1'];
     VAR formato = '';
@@ -175,45 +214,729 @@ const examples=[
         }
     } FIN;
 } FIN!`
-];
+    };
 
-let tabs=[],cur=0;
-function addTab(n,c){tabs.push({n,c});render();}
-function render(){
-  const el=document.getElementById("tabs");
-  el.innerHTML="";
-  tabs.forEach((t,i)=>{
-    const b=document.createElement("div");
-    b.className="tab"+(i===cur?" active":"");
-    b.textContent=t.n;
-    b.onclick=()=>{cur=i;document.getElementById("code").value=t.c;};
-    el.appendChild(b);
-  });
-}
-function loadExample(i){addTab(["Simple","Playlist","Formatos"][i],examples[i]);}
+    // Estado de la aplicación
+    let tabData = { ...initialFiles };
+    let activeTabId = 'descarga_simple.txt';
+    let consoleMode = 'command'; // 'command' | 'simulation'
+    let currentSimulation = null; // Almacenará el generador de simulación
+    let simulationInputResolve = null; // Función para resolver la promesa de LEER
 
-loadExample(0);loadExample(1);loadExample(2);
+    // ==================================================================
+    // 2. ELEMENTOS DEL DOM
+    // ==================================================================
+    
+    const tabBar = document.getElementById('tab-bar');
+    const editor = document.getElementById('editor');
+    const consoleWrapper = document.getElementById('console-wrapper');
+    const consoleOutput = document.getElementById('console-output');
+    const consoleInput = document.getElementById('console-input');
+    const promptText = document.getElementById('prompt-text');
+    const fileUploader = document.getElementById('file-uploader');
 
-document.getElementById("code").value=tabs[0].c;
+    // ==================================================================
+    // 3. ANALIZADOR LÉXICO (Fiel a C++)
+    // ==================================================================
+    
+    const TokenType = {
+        // Palabras Clave
+        FUNCION: 'FUNCION', MAIN: 'main', FIN_FUNCION: 'FIN!',
+        VAR: 'VAR',
+        IMPRIMIR: 'IMPRIMIR', LEER: 'LEER',
+        PARA: 'PARA', CADA: 'CADA', EN: 'EN', HACER: 'HACER', FIN_PARA: 'FIN;',
+        SI: 'SI', ENTONCES: 'ENTONCES',
+        DESCARGAR: 'descargar',
+        AS: 'AS',
 
-document.getElementById("runBtn").onclick=()=>{
-  const src=document.getElementById("code").value;
-  const lex=new Lexer(src);const tk=lex.tokenize();
-  const cons=document.getElementById("console");cons.innerHTML="";
-  for(let i=0;i<tk.length;i++){cons.innerHTML+=tokenName(tk[i])+" ";}
-  const p=new Parser(tk);const r=p.run();
-  cons.innerHTML+="\n\n"+(r.ok?"✅ Sintaxis correcta":"❌ Error en estado "+r.estado+" token "+tokenName(r.token));
-};
+        // Símbolos
+        PAREN_IZQ: '(', PAREN_DER: ')',
+        LLAVE_IZQ: '{', LLAVE_DER: '}',
+        CORCH_IZQ: '[', CORCH_DER: ']',
+        PUNTO_COMA: ';',
+        COMA: ',',
+        ASIGNAR: '=',
+        PUNTO: '.',
 
-function tokenName(t){for(const k in TOK)if(TOK[k]===t)return k;return t;}
+        // Literales y Tipos
+        IDENTIFICADOR: 'IDENTIFICADOR',
+        STRING: 'STRING',
+        TIPO_DATO: 'TIPO_DATO', // mp3, mp4, mkv
 
-document.getElementById("uploadBox").onclick=()=>document.getElementById("fileInput").click();
-document.getElementById("fileInput").onchange=e=>{
-  const f=e.target.files[0];if(!f)return;
-  const r=new FileReader();
-  r.onload=x=>{addTab(f.name,x.target.result);document.getElementById("code").value=x.target.result;};
-  r.readAsText(f);
-};
-</script>
+        // Fin de archivo
+        EOF: 'EOF'
+    };
+
+    const KEYWORDS = {
+        'FUNCION': TokenType.FUNCION, 'main': TokenType.MAIN, 'FIN!': TokenType.FIN_FUNCION,
+        'VAR': TokenType.VAR,
+        'IMPRIMIR': TokenType.IMPRIMIR, 'LEER': TokenType.LEER,
+        'PARA': TokenType.PARA, 'CADA': TokenType.CADA, 'EN': TokenType.EN, 'HACER': TokenType.HACER, 'FIN;': TokenType.FIN_PARA,
+        'SI': TokenType.SI, 'ENTONCES': TokenType.ENTONCES,
+        'descargar': TokenType.DESCARGAR,
+        'AS': TokenType.AS,
+        'mp3': TokenType.TIPO_DATO, 'mp4': TokenType.TIPO_DATO, 'mkv': TokenType.TIPO_DATO, 'flac': TokenType.TIPO_DATO
+    };
+
+    function analizarLexico(code) {
+        let tokens = [];
+        let pos = 0;
+        let linea = 1;
+        let col = 1;
+
+        const esLetra = (c) => c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c === '_';
+        const esNumero = (c) => c >= '0' && c <= '9';
+        const esAlfanumerico = (c) => esLetra(c) || esNumero(c);
+        const esEspacio = (c) => c === ' ' || c === '\t' || c === '\r';
+
+        while (pos < code.length) {
+            let char = code[pos];
+
+            // 1. Espacios en blanco y saltos de línea
+            if (esEspacio(char)) {
+                pos++;
+                col++;
+                continue;
+            }
+            if (char === '\n') {
+                pos++;
+                linea++;
+                col = 1;
+                continue;
+            }
+
+            // 2. Símbolos simples
+            const simbolos = {
+                '(': TokenType.PAREN_IZQ, ')': TokenType.PAREN_DER,
+                '{': TokenType.LLAVE_IZQ, '}': TokenType.LLAVE_DER,
+                '[': TokenType.CORCH_IZQ, ']': TokenType.CORCH_DER,
+                ';': TokenType.PUNTO_COMA, ',': TokenType.COMA,
+                '=': TokenType.ASIGNAR, '.': TokenType.PUNTO
+            };
+            if (simbolos[char]) {
+                tokens.push({ type: simbolos[char], value: char, linea, col });
+                pos++;
+                col++;
+                continue;
+            }
+
+            // 3. Strings (literales de cadena)
+            if (char === "'") {
+                let startPos = pos + 1;
+                let endPos = code.indexOf("'", startPos);
+                if (endPos === -1) {
+                    return { error: `Error Léxico (L:${linea}, C:${col}): String no cerrado.` };
+                }
+                let value = code.substring(startPos, endPos);
+                tokens.push({ type: TokenType.STRING, value, linea, col });
+                let len = endPos - pos + 1;
+                pos = endPos + 1;
+                col += len;
+                continue;
+            }
+            
+            // 4. Identificadores, Palabras Clave y FIN! / FIN;
+            // Manejo especial para 'FIN!' y 'FIN;'
+            if (char === 'F' && code.substring(pos, pos + 4) === 'FIN!') {
+                 tokens.push({ type: TokenType.FIN_FUNCION, value: 'FIN!', linea, col });
+                 pos += 4; col += 4;
+                 continue;
+            }
+             if (char === 'F' && code.substring(pos, pos + 4) === 'FIN;') {
+                 tokens.push({ type: TokenType.FIN_PARA, value: 'FIN;', linea, col });
+                 pos += 4; col += 4;
+                 continue;
+            }
+
+            if (esLetra(char)) {
+                let startPos = pos;
+                while (pos < code.length && (esAlfanumerico(code[pos]) || code[pos] === '_')) {
+                    pos++;
+                }
+                let value = code.substring(startPos, pos);
+                let type = KEYWORDS[value] || TokenType.IDENTIFICADOR;
+                tokens.push({ type, value, linea, col });
+                col += value.length;
+                continue;
+            }
+
+            // 5. Carácter no reconocido
+            return { error: `Error Léxico (L:${linea}, C:${col}): Carácter no reconocido '${char}'.` };
+        }
+
+        tokens.push({ type: TokenType.EOF, value: 'EOF', linea, col });
+        return { tokens };
+    }
+
+    // ==================================================================
+    // 4. ANALIZADOR SINTÁCTICO (Generador de AST)
+    // ==================================================================
+
+    let parserTokens = [];
+    let parserPos = 0;
+
+    function parseError(token, mensaje) {
+        return `Error Sintáctico (L:${token.linea}, C:${token.col}): ${mensaje}. Se obtuvo '${token.value}'.`;
+    }
+
+    // Funciones de ayuda del parser
+    const peek = () => parserTokens[parserPos];
+    const previous = () => parserTokens[parserPos - 1];
+    const isAtEnd = () => peek().type === TokenType.EOF;
+    const advance = () => { if (!isAtEnd()) parserPos++; return previous(); };
+    const check = (type) => isAtEnd() ? false : peek().type === type;
+    
+    const match = (...types) => {
+        for (const type of types) {
+            if (check(type)) {
+                advance();
+                return true;
+            }
+        }
+        return false;
+    };
+    
+    const consume = (type, mensaje) => {
+        if (check(type)) return advance();
+        throw new Error(parseError(peek(), mensaje));
+    };
+
+    // --- Reglas de Gramática (Descenso Recursivo) ---
+
+    function analizarSintactico(tokens) {
+        parserTokens = tokens;
+        parserPos = 0;
+        let ast = [];
+        
+        try {
+            // El programa debe empezar con FUNCION main() { ... } FIN!
+            consume(TokenType.FUNCION, "Se esperaba 'FUNCION'");
+            consume(TokenType.MAIN, "Se esperaba 'main'");
+            consume(TokenType.PAREN_IZQ, "Se esperaba '(' después de 'main'");
+            consume(TokenType.PAREN_DER, "Se esperaba ')' después de 'main'");
+            consume(TokenType.LLAVE_IZQ, "Se esperaba '{' para iniciar el bloque 'main'");
+            
+            ast = parseBlock(); // Parsea el contenido del main
+
+            consume(TokenType.LLAVE_DER, "Se esperaba '}' para cerrar el bloque 'main'");
+            consume(TokenType.FIN_FUNCION, "Se esperaba 'FIN!' al final del programa");
+            consume(TokenType.EOF, "No debería haber más código después de 'FIN!'");
+
+            return { ast: { type: 'Program', body: ast } };
+        } catch (error) {
+            return { error: error.message };
+        }
+    }
+
+    function parseBlock() {
+        let statements = [];
+        while (!check(TokenType.LLAVE_DER) && !check(TokenType.EOF)) {
+            statements.push(parseStatement());
+        }
+        return statements;
+    }
+
+    function parseStatement() {
+        if (match(TokenType.VAR)) return parseVarDeclaration();
+        if (match(TokenType.IMPRIMIR)) return parseImprimirStatement();
+        if (match(TokenType.LEER)) return parseLeerStatement();
+        if (match(TokenType.DESCARGAR)) return parseDescargarStatement();
+        if (match(TokenType.PARA)) return parseParaCadaStatement();
+        if (match(TokenType.SI)) return parseSiStatement();
+        
+        throw new Error(parseError(peek(), "Instrucción no reconocida"));
+    }
+
+    function parseVarDeclaration() {
+        const name = consume(TokenType.IDENTIFICADOR, "Se esperaba un nombre para la variable").value;
+        consume(TokenType.ASIGNAR, "Se esperaba '=' después del nombre de la variable");
+        
+        let initializer = null;
+        if (check(TokenType.STRING)) {
+            initializer = { type: 'Literal', value: advance().value };
+        } else if (check(TokenType.CORCH_IZQ)) {
+            // Parseo de Array
+            initializer = { type: 'ArrayLiteral', elements: [] };
+            advance(); // Consume '['
+            while (!check(TokenType.CORCH_DER) && !isAtEnd()) {
+                const url = consume(TokenType.STRING, "Se esperaba un string (URL) en el array").value;
+                consume(TokenType.AS, "Se esperaba 'AS' después de la URL");
+                const nombre = consume(TokenType.STRING, "Se esperaba un string (nombre) después de 'AS'").value;
+                initializer.elements.push({ url, nombre });
+                
+                if (!match(TokenType.COMA)) break;
+            }
+            consume(TokenType.CORCH_DER, "Se esperaba ']' para cerrar el array");
+        } else {
+            throw new Error(parseError(peek(), "Se esperaba un valor (string o array) para la variable"));
+        }
+        
+        consume(TokenType.PUNTO_COMA, "Se esperaba ';' al final de la declaración VAR");
+        return { type: 'VarDeclaration', name, initializer };
+    }
+
+    function parseImprimirStatement() {
+        const value = consume(TokenType.STRING, "Se esperaba un string después de 'IMPRIMIR'").value;
+        consume(TokenType.PUNTO_COMA, "Se esperaba ';' al final de 'IMPRIMIR'");
+        return { type: 'ImprimirStatement', value };
+    }
+    
+    function parseLeerStatement() {
+        const variable = consume(TokenType.IDENTIFICADOR, "Se esperaba un nombre de variable después de 'LEER'").value;
+        consume(TokenType.PUNTO_COMA, "Se esperaba ';' al final de 'LEER'");
+        return { type: 'LeerStatement', variable };
+    }
+
+    function parseDescargarStatement() {
+        // descargar(link, mp4, 'Video1', 'C:/Videos');
+        const args = [];
+        consume(TokenType.PAREN_IZQ, "Se esperaba '(' después de 'descargar'");
+        
+        // 1. URL (Identificador o String)
+        if (check(TokenType.IDENTIFICADOR) || check(TokenType.STRING) || check(TokenType.PUNTO)) {
+            args.push(parseExpression());
+        } else {
+             throw new Error(parseError(peek(), "Se esperaba variable o string para URL"));
+        }
+        
+        consume(TokenType.COMA, "Se esperaba ',' después de la URL");
+
+        // 2. Formato (Identificador o Tipo_Dato)
+        if (check(TokenType.IDENTIFICADOR) || check(TokenType.TIPO_DATO)) {
+            args.push(parseExpression());
+        } else {
+             throw new Error(parseError(peek(), "Se esperaba variable o tipo (mp3, mp4) para formato"));
+        }
+
+        consume(TokenType.COMA, "Se esperaba ',' después del formato");
+
+        // 3. Nombre (Identificador o String)
+         if (check(TokenType.IDENTIFICADOR) || check(TokenType.STRING) || check(TokenType.PUNTO)) {
+            args.push(parseExpression());
+        } else {
+             throw new Error(parseError(peek(), "Se esperaba variable o string para nombre"));
+        }
+
+        consume(TokenType.COMA, "Se esperaba ',' después del nombre");
+
+        // 4. Ruta (String)
+        if (check(TokenType.STRING)) {
+            args.push(parseExpression());
+        } else {
+             throw new Error(parseError(peek(), "Se esperaba string para ruta"));
+        }
+        
+        consume(TokenType.PAREN_DER, "Se esperaba ')' después de los argumentos de 'descargar'");
+        consume(TokenType.PUNTO_COMA, "Se esperaba ';' al final de 'descargar'");
+        
+        return { type: 'DescargarStatement', arguments: args };
+    }
+    
+    function parseParaCadaStatement() {
+        // PARA CADA video EN playlist HACER { ... } FIN;
+        consume(TokenType.CADA, "Se esperaba 'CADA' después de 'PARA'");
+        const iteratorVar = consume(TokenType.IDENTIFICADOR, "Se esperaba un nombre de variable (iterador)").value;
+        consume(TokenType.EN, "Se esperaba 'EN'");
+        const arrayVar = consume(TokenType.IDENTIFICADOR, "Se esperaba un nombre de variable (array)").value;
+        consume(TokenType.HACER, "Se esperaba 'HACER'");
+        consume(TokenType.LLAVE_IZQ, "Se esperaba '{' para iniciar el bloque 'PARA CADA'");
+        
+        const body = parseBlock();
+        
+        consume(TokenType.LLAVE_DER, "Se esperaba '}' para cerrar el bloque 'PARA CADA'");
+        consume(TokenType.FIN_PARA, "Se esperaba 'FIN;' al final del bloque 'PARA CADA'");
+        
+        return { type: 'ParaCadaStatement', iteratorVar, arrayVar, body };
+    }
+    
+    function parseSiStatement() {
+        // SI formato ENTONCES { ... }
+        const condition = consume(TokenType.IDENTIFICADOR, "Se esperaba una variable como condición para 'SI'").value;
+        consume(TokenType.ENTONCES, "Se esperaba 'ENTONCES' después de la condición");
+        consume(TokenType.LLAVE_IZQ, "Se esperaba '{' para iniciar el bloque 'SI'");
+        
+        const body = parseBlock();
+        
+        consume(TokenType.LLAVE_DER, "Se esperaba '}' para cerrar el bloque 'SI'");
+        
+        return { type: 'SiStatement', condition, body };
+    }
+    
+    function parseExpression() {
+        if (match(TokenType.STRING)) {
+            return { type: 'Literal', value: previous().value };
+        }
+        if (match(TokenType.TIPO_DATO)) {
+             return { type: 'Literal', value: previous().value };
+        }
+        
+        if (match(TokenType.IDENTIFICADOR)) {
+            const id = previous().value;
+            // Maneja acceso a propiedades (ej: video.url, video.nombre)
+            if (match(TokenType.PUNTO)) {
+                const property = consume(TokenType.IDENTIFICADOR, "Se esperaba nombre de propiedad (url, nombre) después de '.'").value;
+                return { type: 'MemberExpression', object: id, property: property };
+            }
+            return { type: 'Identifier', name: id };
+        }
+
+        throw new Error(parseError(peek(), "Se esperaba una expresión (variable, string)"));
+    }
+
+
+    // ==================================================================
+    // 5. SIMULADOR DE EJECUCIÓN (Intérprete del AST)
+    // ==================================================================
+
+    class Environment {
+        constructor() {
+            this.variables = new Map();
+        }
+        // Define una variable (VAR)
+        define(name, value) {
+            this.variables.set(name, value);
+        }
+        // Asigna un valor a una variable existente (LEER)
+        assign(name, value) {
+            if (!this.variables.has(name)) {
+                // En esta simulación, LEER puede definir la variable si no existe (como en el VAR link = '')
+                this.define(name, value);
+                // throw new Error(`Simulación: Variable no definida '${name}'.`);
+            } else {
+                 this.variables.set(name, value);
+            }
+        }
+        // Obtiene el valor de una variable
+        get(name) {
+            if (!this.variables.has(name)) {
+                throw new Error(`Simulación: Variable no definida '${name}'.`);
+            }
+            return this.variables.get(name);
+        }
+    }
+
+    async function* simulationGenerator(astNode, environment) {
+        
+        switch (astNode.type) {
+            case 'Program':
+                for (const statement of astNode.body) {
+                    yield* simulationGenerator(statement, environment);
+                }
+                break;
+
+            case 'VarDeclaration':
+                let initValue;
+                if (astNode.initializer.type === 'Literal') {
+                    initValue = astNode.initializer.value;
+                } else if (astNode.initializer.type === 'ArrayLiteral') {
+                    // El array ya está parseado
+                    initValue = astNode.initializer.elements;
+                }
+                environment.define(astNode.name, initValue);
+                break;
+
+            case 'ImprimirStatement':
+                // Salida de la simulación
+                writeToConsole(astNode.value, 'line-sim-output');
+                break;
+
+            case 'LeerStatement':
+                // Pausa la simulación y espera input
+                const prompt = (consoleOutput.lastChild && consoleOutput.lastChild.textContent.endsWith(':') ? "" : "> ");
+                const input = yield { type: 'input', prompt: prompt }; // Señal de pausa
+                environment.assign(astNode.variable, input);
+                break;
+
+            case 'DescargarStatement':
+                // Evalúa los argumentos antes de usarlos
+                const args = [];
+                for(const argNode of astNode.arguments) {
+                    args.push(yield* evaluateExpression(argNode, environment));
+                }
+                
+                const [url, formato, nombre, ruta] = args;
+                
+                writeToConsole(`→ Descargando '${nombre}.${formato}' desde ${url} ...`, 'line-info');
+                await sleep(2000 + Math.random() * 1000); // Simula tiempo de descarga
+                writeToConsole(`✅ Descarga completada. Guardado en: ${ruta}`, 'line-success');
+                break;
+
+            case 'ParaCadaStatement':
+                const array = environment.get(astNode.arrayVar);
+                if (!Array.isArray(array)) {
+                    throw new Error(`Simulación: '${astNode.arrayVar}' no es un array (en PARA CADA).`);
+                }
+                
+                // Crea un nuevo scope para el iterador
+                const loopEnv = new Environment();
+                loopEnv.variables = new Map(environment.variables); // Hereda
+                
+                for (const item of array) {
+                    // Define la variable iteradora (ej: 'video' o 'e')
+                    loopEnv.define(astNode.iteratorVar, item);
+                    // Ejecuta el bloque
+                    for (const statement of astNode.body) {
+                        yield* simulationGenerator(statement, loopEnv);
+                    }
+                }
+                break;
+                
+            case 'SiStatement':
+                const conditionValue = environment.get(astNode.condition);
+                // Simple chequeo de "existencia" (no vacío)
+                if (conditionValue) {
+                    for (const statement of astNode.body) {
+                        yield* simulationGenerator(statement, environment);
+                    }
+                }
+                break;
+
+            default:
+                throw new Error(`Simulación: Nodo AST no reconocido '${astNode.type}'.`);
+        }
+    }
+    
+    // Función de ayuda para evaluar expresiones (devuelve el valor)
+    function* evaluateExpression(node, environment) {
+        switch(node.type) {
+            case 'Literal':
+                return node.value;
+            case 'Identifier':
+                return environment.get(node.name);
+            case 'MemberExpression':
+                // ej: video.url
+                const object = environment.get(node.object); // Obtiene el objeto 'video'
+                if (typeof object !== 'object' || object === null) {
+                    throw new Error(`Simulación: '${node.object}' no es un objeto.`);
+                }
+                return object[node.property]; // Devuelve 'video.url'
+        }
+    }
+
+    // ==================================================================
+    // 6. CONTROLADOR PRINCIPAL (UI, Consola, Pestañas)
+    // ==================================================================
+
+    function init() {
+        // 1. Cargar pestañas iniciales
+        Object.keys(tabData).forEach(filename => createTab(filename));
+        
+        // 2. Activar la primera pestaña
+        switchTab(activeTabId);
+        
+        // 3. Listeners
+        tabBar.addEventListener('click', handleTabClick);
+        editor.addEventListener('input', handleEditorInput);
+        consoleInput.addEventListener('keydown', handleConsoleKeyDown);
+        consoleWrapper.addEventListener('click', () => consoleInput.focus());
+        fileUploader.addEventListener('change', handleFileUpload);
+        
+        // 4. Mensaje de bienvenida
+        writeToConsole('--- YTDOWNLOAD Studio (Consola Fiel a C++) ---', 'line-warn');
+        writeToConsole('Escriba "ejecutar" para analizar y simular el código de la pestaña activa.');
+        writeToConsole('Escriba "subir" para cargar un archivo .txt.');
+        writeToConsole('Escriba "limpiar" para limpiar esta consola.');
+        
+        consoleInput.focus();
+    }
+
+    function createTab(filename) {
+        const tab = document.createElement('div');
+        tab.className = 'tab';
+        tab.dataset.tabId = filename;
+        tab.textContent = filename;
+        tabBar.appendChild(tab);
+        return tab;
+    }
+
+    function switchTab(tabId) {
+        // Actualizar estado
+        activeTabId = tabId;
+        
+        // Actualizar UI de pestañas
+        document.querySelectorAll('.tab').forEach(t => {
+            t.classList.toggle('active', t.dataset.tabId === tabId);
+        });
+        
+        // Cargar código en el editor
+        editor.value = tabData[tabId] || '';
+        
+        // No ejecutamos automáticamente, solo informamos
+        writeToConsole(`Pestaña activa: ${tabId}. Escriba "ejecutar".`, 'line-cmd');
+        cancelSimulation(); // Detiene cualquier simulación en curso
+        consoleInput.focus();
+    }
+    
+    // --- Manejadores de Eventos ---
+
+    function handleTabClick(e) {
+        if (e.target.classList.contains('tab')) {
+            const tabId = e.target.dataset.tabId;
+            if (tabId !== activeTabId) {
+                switchTab(tabId);
+            }
+        }
+    }
+
+    function handleEditorInput() {
+        // Guardar cambios en el estado
+        tabData[activeTabId] = editor.value;
+    }
+
+    async function handleConsoleKeyDown(e) {
+        if (e.key !== 'Enter') return;
+        
+        const input = consoleInput.value;
+        consoleInput.value = '';
+        
+        if (consoleMode === 'simulation') {
+            // Estamos esperando un LEER
+            writeToConsole(input, 'line-sim-output'); // Muestra lo que el usuario escribió
+            if (simulationInputResolve) {
+                simulationInputResolve(input); // Resuelve la promesa de LEER
+                simulationInputResolve = null; // Limpia el resolver
+                await advanceSimulation(); // Continúa la simulación
+            }
+        } else {
+            // Estamos en modo comando
+            writeToConsole(`${promptText.textContent}${input}`, 'line-cmd');
+            
+            // Procesar comando
+            const cmd = input.trim().toLowerCase();
+            switch (cmd) {
+                case 'ejecutar':
+                    runAnalysisAndSimulation();
+                    break;
+                case 'subir':
+                    fileUploader.click();
+                    break;
+                case 'limpiar':
+                    consoleOutput.innerHTML = '';
+                    break;
+                case '':
+                    break; // No hacer nada si está vacío
+                default:
+                    writeToConsole(`Comando no reconocido: "${input}"`, 'line-error');
+            }
+        }
+        
+        consoleWrapper.scrollTop = consoleWrapper.scrollHeight;
+    }
+
+    function handleFileUpload(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const content = event.target.result;
+            const filename = file.name;
+            
+            // Añadir al estado y crear la pestaña
+            tabData[filename] = content;
+            createTab(filename);
+            
+            // Cambiar a la nueva pestaña
+            switchTab(filename);
+        };
+        reader.onerror = () => {
+            writeToConsole(`Error leyendo el archivo ${file.name}`, 'line-error');
+        };
+        reader.readAsText(file);
+        
+        // Resetear para poder subir el mismo archivo de nuevo
+        e.target.value = null;
+    }
+    
+    // --- Flujo de Ejecución ---
+
+    function runAnalysisAndSimulation() {
+        const code = tabData[activeTabId];
+        writeToConsole(`Iniciando análisis para ${activeTabId}...`, 'line-info');
+        
+        // 1. Análisis Léxico
+        const lexerResult = analizarLexico(code);
+        if (lexerResult.error) {
+            writeToConsole(lexerResult.error, 'line-error');
+            return;
+        }
+        writeToConsole('✓ Análisis Léxico completado.', 'line-success');
+        
+        // 2. Análisis Sintáctico
+        const parserResult = analizarSintactico(lexerResult.tokens);
+        if (parserResult.error) {
+            writeToConsole(parserResult.error, 'line-error');
+            return;
+        }
+        writeToConsole('✓ Análisis Sintáctico completado.', 'line-success');
+
+        // 3. Iniciar Simulación
+        writeToConsole('→ Ejecutando simulación de descarga...', 'line-warn');
+        startSimulation(parserResult.ast);
+    }
+    
+    function startSimulation(ast) {
+        const environment = new Environment();
+        currentSimulation = simulationGenerator(ast, environment); // Inicia el generador
+        consoleMode = 'simulation';
+        promptText.textContent = ""; // Oculta el prompt base
+        advanceSimulation(); // Arranca el primer paso
+    }
+
+    async function advanceSimulation() {
+        if (!currentSimulation) return;
+        
+        try {
+            const result = await currentSimulation.next();
+            
+            if (result.done) {
+                // Simulación terminada
+                writeToConsole('--- Simulación finalizada ---', 'line-warn');
+                cancelSimulation();
+            } else if (result.value && result.value.type === 'input') {
+                // Pausa para LEER
+                promptText.textContent = result.value.prompt || "> "; // Muestra el prompt de LEER
+                // Crea la promesa que será resuelta por handleConsoleKeyDown
+                await new Promise(resolve => {
+                    simulationInputResolve = resolve;
+                });
+            }
+            
+        } catch (error) {
+            writeToConsole(`Error de Simulación: ${error.message}`, 'line-error');
+            cancelSimulation();
+        }
+    }
+    
+    function cancelSimulation() {
+        consoleMode = 'command';
+        promptText.textContent = "> ";
+        currentSimulation = null;
+        simulationInputResolve = null;
+    }
+
+    // ==================================================================
+    // 7. UTILIDADES
+    // ==================================================================
+
+    function writeToConsole(message, className = '') {
+        const line = document.createElement('div');
+        line.className = 'line';
+        if (className) {
+            line.classList.add(className);
+        }
+        line.textContent = message;
+        consoleOutput.appendChild(line);
+        consoleWrapper.scrollTop = consoleWrapper.scrollHeight;
+    }
+    
+    function sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+    
+    // --- Arrancar la aplicación ---
+    init();
+
+    </script>
 </body>
 </html>
