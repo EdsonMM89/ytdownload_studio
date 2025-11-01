@@ -144,23 +144,24 @@
         /* Clases de líneas de la consola */
         #console-output .line { margin-bottom: 5px; }
         #console-output .line-error { color: var(--color-rojo); }
-        #console-output .line-success { color: var(--color-verde); }
-        #console-output .line-info { color: var(--color-azul); }
+        #console-output .line-success { color: var(--color-verde); font-weight: bold; }
+        #console-output .line-info { color: var(--color-azul); font-weight: bold; }
         #console-output .line-warn { color: var(--color-amarillo); }
         #console-output .line-cmd { color: var(--color-texto-secundario); }
         #console-output .line-sim-output { color: var(--color-texto); }
-        #console-output .line-sim-prompt { color: var(--color-verde); }
+        #console-output .line-sim-prompt { display: none; }
 
         .input-line {
             display: flex;
             flex-shrink: 0;
-            background-color: var(--color-consola-bg); /* Fondo sólido */
+            background-color: var(--color-consola-bg);
         }
 
         .prompt {
             color: var(--color-verde);
             margin-right: 8px;
             flex-shrink: 0;
+            white-space: pre; /* Respeta espacios en el prompt */
         }
 
         #console-input {
@@ -306,14 +307,14 @@
     // 1. ESTADO Y DATOS INICIALES
     // ==================================================================
     
-    // Contenido de los archivos base (CÓDIGO CORREGIDO SIN PUNTO Y COMA)
+    // Contenido de los archivos base (USANDO TU SCRIPT ORIGINAL)
     const initialFiles = {
         'simple.ytd': 
 `FUNCION main() {
-    VAR link = ''
+    VAR link = ' '
     IMPRIMIR 'Ingresa la URL del video:'
     LEER link
-    descargar(link, mp4, 'Video1', 'C:/Videos')
+    descargar(link,' ', 'Video1', 'C:/Videos')
 } FIN!`,
         
         'playlist.ytd':
@@ -343,9 +344,10 @@
     // Estado de la aplicación
     let tabData = { ...initialFiles };
     let activeFile = 'simple.ytd';
-    let consoleMode = 'command'; // 'command' | 'simulation'
+    let consoleMode = 'command'; // 'command' | 'simulation' | 'idle'
     let currentSimulation = null; // Almacenará el generador de simulación
     let simulationInputResolve = null; // Función para resolver la promesa de LEER
+    let currentInputPrompt = ""; // Almacena el prompt actual de LEER
 
     // ==================================================================
     // 2. ELEMENTOS DEL DOM
@@ -377,7 +379,7 @@
         PAREN_IZQ: '(', PAREN_DER: ')',
         LLAVE_IZQ: '{', LLAVE_DER: '}',
         CORCH_IZQ: '[', CORCH_DER: ']',
-        PUNTO_COMA: ';', // Aún lo reconocemos, pero no lo exigimos
+        PUNTO_COMA: ';',
         COMA: ',',
         ASIGNAR: '=',
         PUNTO: '.',
@@ -490,22 +492,17 @@
     let parserPos = 0;
 
     function parseError(token, mensaje) {
-        return `Error Sintáctico (L:${token.linea}, C:${token.col}): ${mensaje}. Se obtuvo '${token.value}'.`;
+        return `Error Sintáctico (L:${token.linea}, C:${col}): ${mensaje}. Se obtuvo '${token.value}'.`;
     }
 
-    // --- Funciones de ayuda del parser (CON ERRORES CORREGIDOS) ---
     const peek = () => parserTokens[parserPos];
     const previous = () => parserTokens[parserPos - 1];
-    
-    // ** BUG FIX 1: 'check' e 'isAtEnd' simplificados **
     const isAtEnd = () => peek().type === TokenType.EOF;
     const check = (type) => peek().type === type;
-    
     const advance = () => { if (!isAtEnd()) parserPos++; return previous(); };
     
     const match = (...types) => {
         for (const type of types) {
-            // Usamos 'check' que ahora funciona correctamente con EOF
             if (check(type)) {
                 advance();
                 return true;
@@ -518,8 +515,6 @@
         if (check(type)) return advance();
         throw new Error(parseError(peek(), mensaje));
     };
-
-    // --- Reglas de Gramática (Descenso Recursivo) ---
 
     function analizarSintactico(tokens) {
         parserTokens = tokens;
@@ -537,7 +532,7 @@
 
             consume(TokenType.LLAVE_DER, "Se esperaba '}' para cerrar el bloque 'main'");
             consume(TokenType.FIN_FUNCION, "Se esperaba 'FIN!' al final del programa");
-            consume(TokenType.EOF, "Se esperaba el fin del archivo después de 'FIN!'"); // Mensaje corregido
+            consume(TokenType.EOF, "Se esperaba el fin del archivo después de 'FIN!'");
 
             return { ast: { type: 'Program', body: ast } };
         } catch (error) {
@@ -560,11 +555,7 @@
         if (match(TokenType.DESCARGAR)) return parseDescargarStatement();
         if (match(TokenType.PARA)) return parseParaCadaStatement();
         if (match(TokenType.SI)) return parseSiStatement();
-        
-        // ** BUG FIX 2: Omitir puntos y comas opcionales **
-        if (match(TokenType.PUNTO_COMA)) {
-            return { type: 'EmptyStatement' }; // No hacer nada, solo consumirlo
-        }
+        if (match(TokenType.PUNTO_COMA)) { return { type: 'EmptyStatement' }; }
         
         throw new Error(parseError(peek(), "Instrucción no reconocida"));
     }
@@ -591,21 +582,18 @@
             throw new Error(parseError(peek(), "Se esperaba un valor (string o array) para la variable"));
         }
         
-        // ** BUG FIX 2: Semicolon opcional **
         match(TokenType.PUNTO_COMA); 
         return { type: 'VarDeclaration', name, initializer };
     }
 
     function parseImprimirStatement() {
         const value = consume(TokenType.STRING, "Se esperaba un string después de 'IMPRIMIR'").value;
-        // ** BUG FIX 2: Semicolon opcional **
         match(TokenType.PUNTO_COMA);
         return { type: 'ImprimirStatement', value };
     }
     
     function parseLeerStatement() {
         const variable = consume(TokenType.IDENTIFICADOR, "Se esperaba un nombre de variable después de 'LEER'").value;
-        // ** BUG FIX 2: Semicolon opcional **
         match(TokenType.PUNTO_COMA);
         return { type: 'LeerStatement', variable };
     }
@@ -614,38 +602,15 @@
         const args = [];
         consume(TokenType.PAREN_IZQ, "Se esperaba '(' después de 'descargar'");
         
-        if (check(TokenType.IDENTIFICADOR) || check(TokenType.STRING) || check(TokenType.PUNTO)) {
-            args.push(parseExpression());
-        } else {
-             throw new Error(parseError(peek(), "Se esperaba variable o string para URL"));
-        }
-        
-        consume(TokenType.COMA, "Se esperaba ',' después de la URL");
-
-        if (check(TokenType.IDENTIFICADOR) || check(TokenType.TIPO_DATO)) {
-            args.push(parseExpression());
-        } else {
-             throw new Error(parseError(peek(), "Se esperaba variable o tipo (mp3, mp4) para formato"));
-        }
-
-        consume(TokenType.COMA, "Se esperaba ',' después del formato");
-
-         if (check(TokenType.IDENTIFICADOR) || check(TokenType.STRING) || check(TokenType.PUNTO)) {
-            args.push(parseExpression());
-        } else {
-             throw new Error(parseError(peek(), "Se esperaba variable o string para nombre"));
-        }
-
-        consume(TokenType.COMA, "Se esperaba ',' después del nombre");
-
-        if (check(TokenType.STRING)) {
-            args.push(parseExpression());
-        } else {
-             throw new Error(parseError(peek(), "Se esperaba string para ruta"));
-        }
+        args.push(parseExpression());
+        consume(TokenType.COMA, "Se esperaba ',' después del primer argumento");
+        args.push(parseExpression());
+        consume(TokenType.COMA, "Se esperaba ',' después del segundo argumento");
+        args.push(parseExpression());
+        consume(TokenType.COMA, "Se esperaba ',' después del tercer argumento");
+        args.push(parseExpression());
         
         consume(TokenType.PAREN_DER, "Se esperaba ')' después de los argumentos de 'descargar'");
-        // ** BUG FIX 2: Semicolon opcional **
         match(TokenType.PUNTO_COMA);
         
         return { type: 'DescargarStatement', arguments: args };
@@ -696,7 +661,7 @@
             return { type: 'Identifier', name: id };
         }
 
-        throw new Error(parseError(peek(), "Se esperaba una expresión (variable, string)"));
+        throw new Error(parseError(peek(), "Se esperaba una expresión (variable, string, tipo)"));
     }
 
 
@@ -708,11 +673,7 @@
         constructor() { this.variables = new Map(); }
         define(name, value) { this.variables.set(name, value); }
         assign(name, value) {
-            if (!this.variables.has(name) && name.length > 0) { // Permite definir con LEER
-                 this.define(name, value);
-            } else {
-                 this.variables.set(name, value);
-            }
+            this.variables.set(name, value);
         }
         get(name) {
             if (!this.variables.has(name)) {
@@ -722,6 +683,7 @@
         }
     }
 
+    // ***** SIMULADOR CON LÓGICA MEJORADA *****
     async function* simulationGenerator(astNode, environment) {
         if (!astNode) yield; // Ignorar nodos nulos (ej. EmptyStatement)
         
@@ -732,7 +694,6 @@
                 }
                 break;
             case 'EmptyStatement':
-                // No hacer nada
                 break;
             case 'VarDeclaration':
                 let initValue;
@@ -746,30 +707,58 @@
             case 'ImprimirStatement':
                 writeToConsole(astNode.value, 'line-sim-output');
                 break;
-            case 'LeerStatement':
-                // Extraer el prompt de la última línea de salida
-                let lastLine = consoleOutput.lastChild ? consoleOutput.lastChild.textContent : "";
-                if (lastLine.endsWith('\n')) lastLine = ""; // Si la última fue un enter, no hay prompt
-                
-                writeToConsole(lastLine, 'line-sim-prompt'); // Repetir la última línea como prompt
-                if (consoleOutput.lastChild) { // Borrar la línea de IMPRIMIR original
-                    consoleOutput.removeChild(consoleOutput.lastChild.previousSibling);
-                }
 
-                const input = yield { type: 'input' }; // Señal de pausa
+            // ***** LÓGICA DE LEER MEJORADA *****
+            case 'LeerStatement':
+                let lastLineText = "";
+                if (consoleOutput.lastChild && consoleOutput.lastChild.classList.contains('line-sim-output')) {
+                    lastLineText = consoleOutput.lastChild.textContent;
+                    // Borrar esa línea de 'IMPRIMIR' para que 'LEER' la reemplace
+                    consoleOutput.removeChild(consoleOutput.lastChild);
+                }
+                
+                const input = yield { type: 'input', prompt: lastLineText }; // Señal de pausa
+                
+                // Asignar el valor (handleConsoleKeyDown se encarga de imprimirlo)
                 environment.assign(astNode.variable, input);
+
+                // IMPRIMIR 'URL RECIBIDA' AUTOMÁTICAMENTE
+                if (lastLineText.includes('URL del video')) {
+                    writeToConsole(`> URL recibida.`, 'line-info');
+                }
                 break;
+            
+            // ***** LÓGICA DE DESCARGAR MEJORADA (INTERACTIVA) *****
             case 'DescargarStatement':
+                // 1. Evaluar los args del script (solo para 'nombre' y 'ruta')
                 const args = [];
                 for(const argNode of astNode.arguments) {
                     args.push(yield* evaluateExpression(argNode, environment));
                 }
-                const [url, formato, nombre, ruta] = args;
-                writeToConsole(`→ Descargando '${nombre}.${formato}' desde ${url} ...`, 'line-info');
+                const [url, formatoOriginal, nombre, ruta] = args;
+                
+                // 2. Iniciar flujo interactivo (Ignoramos 'formatoOriginal')
+
+                // --- Pedir Formato ---
+                const formatPrompt = `> Seleccione formato:\n1. mp3\n2. mp4\n3. wav\n4. mkv\n5. avi\n6. flac`;
+                writeToConsole(formatPrompt, 'line-sim-output');
+                // Pedimos un input SIN prompt, para que se escriba en una línea nueva
+                const formatoInput = yield { type: 'input', prompt: "" }; 
+                
+                // --- Pedir Calidad ---
+                const calidadPrompt = `> Seleccione calidad:\n1. 144p\n2. 360p\n3. 720p\n4. 1080p`;
+                writeToConsole(calidadPrompt, 'line-sim-output');
+                // Pedimos otro input SIN prompt
+                const calidadInput = yield { type: 'input', prompt: "" }; 
+                
+                // 3. Simular Descarga
+                writeToConsole(`> Descargando archivo...`, 'line-info');
                 await sleep(1500 + Math.random() * 1000); 
-                writeToConsole(`✅ Descarga completada. Guardado en: ${ruta}`, 'line-success');
+                writeToConsole(`> Descarga completada.`, 'line-success');
                 break;
+
             case 'ParaCadaStatement':
+                // (Esta lógica sigue igual, pero 'descargar' ahora sería interactivo también)
                 const array = environment.get(astNode.arrayVar);
                 if (!Array.isArray(array)) {
                     throw new Error(`Simulación: '${astNode.arrayVar}' no es un array (en PARA CADA).`);
@@ -785,7 +774,7 @@
                 break;
             case 'SiStatement':
                 const conditionValue = environment.get(astNode.condition);
-                if (conditionValue) { // Chequeo simple
+                if (conditionValue) {
                     for (const statement of astNode.body) {
                         yield* simulationGenerator(statement, environment);
                     }
@@ -807,7 +796,7 @@
                 if (typeof object !== 'object' || object === null) {
                     throw new Error(`Simulación: '${node.object}' no es un objeto.`);
                 }
-                return object[node.property]; // Devuelve 'video.url'
+                return object[node.property];
         }
     }
 
@@ -816,13 +805,9 @@
     // ==================================================================
 
     function init() {
-        // 1. Cargar archivos en la sidebar
         Object.keys(tabData).forEach(filename => createFileInSidebar(filename));
-        
-        // 2. Activar el primer archivo
         switchFile(activeFile);
         
-        // 3. Listeners
         fileList.addEventListener('click', handleFileClick);
         editor.addEventListener('input', handleEditorInput);
         consoleInput.addEventListener('keydown', handleConsoleKeyDown);
@@ -831,13 +816,10 @@
         runButton.addEventListener('click', runAnalysisAndSimulation);
         uploadButton.addEventListener('click', () => fileUploader.click());
         
-        // 4. Mensaje de bienvenida
         writeToConsole('--- YTDOWNLOAD Studio ---', 'line-warn');
         writeToConsole('Seleccione un archivo y presione "Ejecutar Código".');
         
-        // Ocultar la línea de input de la consola al inicio
-        setConsoleMode('simulation'); // Poner en modo 'simulación' oculta el prompt
-        promptText.textContent = "";
+        setConsoleMode('idle');
     }
 
     function createFileInSidebar(filename) {
@@ -851,15 +833,12 @@
     function switchFile(filename) {
         activeFile = filename;
         
-        // Actualizar UI de la sidebar
         document.querySelectorAll('.file-list li').forEach(li => {
             li.classList.toggle('active', li.dataset.fileId === filename);
         });
         
-        // Cargar código en el editor
         editor.value = tabData[filename] || '';
         
-        // Resetear estado
         updateStatus('Listo');
         cancelSimulation();
         consoleInput.focus();
@@ -886,20 +865,35 @@
         tabData[activeFile] = editor.value;
     }
 
+    // ***** MANEJADOR DE INPUT MEJORADO *****
     async function handleConsoleKeyDown(e) {
         if (e.key !== 'Enter') return;
         
         const input = consoleInput.value;
         consoleInput.value = '';
         
-        if (consoleMode === 'simulation' && simulationInputResolve) {
-            // Estamos esperando un LEER
-            writeToConsole(input, 'line-sim-output'); // Muestra lo que el usuario escribió
-            simulationInputResolve(input); // Resuelve la promesa de LEER
+        if (consoleMode === 'command' && simulationInputResolve) {
+            
+            const currentPromptText = currentInputPrompt;
+            setConsoleMode('simulation'); // Poner en modo 'procesando'
+            
+            // --- LÓGICA DE IMPRESIÓN MEJORADA ---
+            if (currentPromptText.trim() !== "") {
+                // Es un LEER con prompt (ej: URL)
+                // Imprime "> Prompt: INPUT"
+                writeToConsole(`> ${currentPromptText} ${input}`, 'line-sim-output');
+            } else {
+                // Es un LEER sin prompt (ej: formato, calidad)
+                // Imprime solo el input en su propia línea
+                writeToConsole(input, 'line-sim-output'); 
+            }
+            // --- FIN LÓGICA DE IMPRESIÓN ---
+            
+            simulationInputResolve(input); 
             simulationInputResolve = null;
-            await advanceSimulation(); // Continúa la simulación
+            
+            await advanceSimulation(); 
         }
-        // Si no estamos esperando input, no hacer nada con 'Enter'
     }
 
     function handleFileUpload(e) {
@@ -927,11 +921,9 @@
     function runAnalysisAndSimulation() {
         const code = tabData[activeFile];
         
-        // Limpiar consola e iniciar
         consoleOutput.innerHTML = '';
         writeToConsole(`Iniciando análisis para ${activeFile}...`, 'line-info');
         
-        // 1. Análisis Léxico
         const lexerResult = analizarLexico(code);
         if (lexerResult.error) {
             writeToConsole(lexerResult.error, 'line-error');
@@ -940,7 +932,6 @@
         }
         writeToConsole('✓ Análisis Léxico completado.', 'line-success');
         
-        // 2. Análisis Sintáctico
         const parserResult = analizarSintactico(lexerResult.tokens);
         if (parserResult.error) {
             writeToConsole(parserResult.error, 'line-error');
@@ -950,7 +941,6 @@
         writeToConsole('✓ Análisis Sintáctico completado.', 'line-success');
         updateStatus('Análisis exitoso', false, true);
 
-        // 3. Iniciar Simulación
         writeToConsole('→ Ejecutando simulación de descarga...', 'line-warn');
         startSimulation(parserResult.ast);
     }
@@ -958,7 +948,7 @@
     function startSimulation(ast) {
         const environment = new Environment();
         currentSimulation = simulationGenerator(ast, environment);
-        setConsoleMode('simulation');
+        setConsoleMode('simulation'); // Modo 'procesando'
         advanceSimulation();
     }
 
@@ -974,7 +964,18 @@
                 cancelSimulation();
             } else if (result.value && result.value.type === 'input') {
                 // Pausa para LEER
-                setConsoleMode('command'); // Muestra el prompt para input
+                currentInputPrompt = result.value.prompt; // Guardar el prompt
+                
+                // Si el prompt está vacío (formato/calidad), el prompt visual será solo ">"
+                let visualPrompt = (currentInputPrompt.trim() !== "") ? `> ${currentInputPrompt} ` : "> ";
+                
+                // Para formato/calidad, el prompt viene vacío, queremos que el ">" esté en la línea de input
+                if (currentInputPrompt.trim() === "") {
+                    visualPrompt = "> ";
+                }
+
+                setConsoleMode('command', visualPrompt); 
+                
                 await new Promise(resolve => {
                     simulationInputResolve = resolve;
                 });
@@ -988,19 +989,24 @@
     }
     
     function cancelSimulation() {
-        setConsoleMode('simulation'); // Oculta el prompt
-        promptText.textContent = "";
+        setConsoleMode('idle'); // Modo 'inactivo'
         currentSimulation = null;
         simulationInputResolve = null;
+        currentInputPrompt = "";
     }
 
-    function setConsoleMode(mode) {
+    // ***** GESTOR DE MODO DE CONSOLA MEJORADO *****
+    function setConsoleMode(mode, promptOverride = null) {
         consoleMode = mode;
-        if (mode === 'command') {
-            promptText.textContent = "> ";
+        const inputLine = consoleInput.parentElement;
+        
+        if (mode === 'command') { // Esperando input
+            promptText.textContent = promptOverride !== null ? promptOverride : "> ";
+            inputLine.style.display = 'flex'; // Mostrar línea de input
             consoleInput.focus();
-        } else {
+        } else { // 'simulation' (procesando) o 'idle' (inactivo)
             promptText.textContent = "";
+            inputLine.style.display = 'none'; // Ocultar línea de input
         }
     }
 
