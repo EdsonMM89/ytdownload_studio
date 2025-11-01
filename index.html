@@ -53,8 +53,77 @@
             overflow: hidden; /* Evita scroll en el main */
         }
 
-        /* --- Panel Izquierdo (Editor + Consola) --- */
-        .left-pane {
+        /* --- CAMBIO: Panel Izquierdo (Sidebar) --- */
+        .sidebar-pane {
+            flex-basis: 250px; /* Ancho fijo */
+            flex-shrink: 0;
+            background-color: var(--color-bg-sidebar);
+            border-right: 1px solid var(--color-borde); /* <-- Borde a la derecha */
+            padding: 20px;
+            overflow-y: auto;
+            box-sizing: border-box;
+        }
+        
+        .sidebar-pane h3 {
+            color: var(--color-rojo);
+            margin-top: 0;
+            border-bottom: 1px solid var(--color-borde);
+            padding-bottom: 10px;
+        }
+
+        .file-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .file-list li {
+            padding: 10px 5px;
+            margin-bottom: 5px;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: background-color 0.2s;
+            color: var(--color-texto-secundario);
+        }
+        .file-list li:hover {
+            background-color: #2a2a2a;
+            color: var(--color-texto);
+        }
+        .file-list li.active {
+            background-color: var(--color-rojo-btn);
+            color: #fff;
+            font-weight: bold;
+        }
+
+        #upload-button {
+            display: block;
+            width: 100%;
+            padding: 10px 5px;
+            margin-top: 20px;
+            background-color: var(--color-borde);
+            color: var(--color-texto);
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: inherit;
+            text-align: left;
+            font-size: 1em;
+        }
+        #upload-button:hover {
+            background-color: #333;
+        }
+        .upload-info {
+            font-size: 0.8em;
+            color: var(--color-texto-secundario);
+            margin-top: 10px;
+        }
+
+
+        #file-uploader {
+            display: none;
+        }
+
+        /* --- CAMBIO: Panel Derecho (Editor + Consola) --- */
+        .main-pane {
             flex-grow: 1;
             display: flex;
             flex-direction: column;
@@ -141,7 +210,6 @@
             word-wrap: break-word;
         }
         
-        /* Clases de líneas de la consola */
         #console-output .line { margin-bottom: 5px; }
         #console-output .line-error { color: var(--color-rojo); font-weight: bold; }
         #console-output .line-success { color: var(--color-verde); font-weight: bold; }
@@ -161,7 +229,7 @@
             color: var(--color-verde);
             margin-right: 8px;
             flex-shrink: 0;
-            white-space: pre; /* Respeta espacios en el prompt */
+            white-space: pre; 
         }
 
         #console-input {
@@ -189,76 +257,6 @@
             50% { background-color: var(--color-verde) }
         }
 
-
-        /* --- Panel Derecho (Sidebar) --- */
-        .right-pane {
-            flex-basis: 250px; /* Ancho fijo */
-            flex-shrink: 0;
-            background-color: var(--color-bg-sidebar);
-            border-left: 1px solid var(--color-borde);
-            padding: 20px;
-            overflow-y: auto;
-            box-sizing: border-box;
-        }
-        
-        .right-pane h3 {
-            color: var(--color-rojo);
-            margin-top: 0;
-            border-bottom: 1px solid var(--color-borde);
-            padding-bottom: 10px;
-        }
-
-        .file-list {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-        }
-        .file-list li {
-            padding: 10px 5px;
-            margin-bottom: 5px;
-            cursor: pointer;
-            border-radius: 4px;
-            transition: background-color 0.2s;
-            color: var(--color-texto-secundario);
-        }
-        .file-list li:hover {
-            background-color: #2a2a2a;
-            color: var(--color-texto);
-        }
-        .file-list li.active {
-            background-color: var(--color-rojo-btn);
-            color: #fff;
-            font-weight: bold;
-        }
-
-        #upload-button {
-            display: block;
-            width: 100%;
-            padding: 10px 5px;
-            margin-top: 20px;
-            background-color: var(--color-borde);
-            color: var(--color-texto);
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-family: inherit;
-            text-align: left;
-            font-size: 1em;
-        }
-        #upload-button:hover {
-            background-color: #333;
-        }
-        .upload-info {
-            font-size: 0.8em;
-            color: var(--color-texto-secundario);
-            margin-top: 10px;
-        }
-
-
-        #file-uploader {
-            display: none;
-        }
-
     </style>
 </head>
 <body>
@@ -267,14 +265,23 @@
         <header>YTDOWNLOAD Studio</header>
         
         <main class="main-content">
-            <div class="left-pane">
+
+            <aside class="sidebar-pane">
+                <h3>Archivos</h3>
+                <ul class="file-list" id="file-list">
+                    </ul>
+
+                <button id="upload-button">Subir archivo .txt</button>
+            </aside>
+            
+            <div class="main-pane">
                 
                 <div class="editor-wrapper">
                     <textarea id="editor" spellcheck="false" autocomplete="off"></textarea>
                 </div>
 
                 <div class="controls-bar">
-                    <button id="run-button"> Ejecutar Código</button>
+                    <button id="run-button">► Ejecutar Código</button>
                     <span id="status-text">Estado: Listo</span>
                 </div>
 
@@ -289,13 +296,6 @@
 
             </div>
 
-            <aside class="right-pane">
-                <h3>Archivos</h3>
-                <ul class="file-list" id="file-list">
-                    </ul>
-
-                <button id="upload-button">Subir archivo .txt</button>
-            </aside>
         </main>
     </div>
     
@@ -341,8 +341,8 @@
     let tabData = { ...initialFiles };
     let activeFile = 'simple.ytd';
     let consoleMode = 'command'; // 'command' | 'simulation' | 'idle'
-    let currentProcess = null; // Renombrado de 'currentSimulation'
-    let processInputResolve = null; // Renombrado de 'simulationInputResolve'
+    let currentProcess = null; 
+    let processInputResolve = null; 
     let currentInputPrompt = ""; 
 
     // ==================================================================
@@ -512,6 +512,28 @@
         throw new Error(parseError(peek(), mensaje));
     };
 
+    // ***** LA FUNCIÓN QUE FALTABA *****
+    function parseExpression() {
+        if (match(TokenType.STRING)) {
+            return { type: 'Literal', value: previous().value };
+        }
+        if (match(TokenType.TIPO_DATO)) {
+             return { type: 'Literal', value: previous().value };
+        }
+        
+        if (match(TokenType.IDENTIFICADOR)) {
+            const id = previous().value;
+            if (match(TokenType.PUNTO)) {
+                const property = consume(TokenType.IDENTIFICADOR, "Se esperaba nombre de propiedad (url, nombre) después de '.'").value;
+                return { type: 'MemberExpression', object: id, property: property };
+            }
+            return { type: 'Identifier', name: id };
+        }
+
+        throw new Error(parseError(peek(), "Se esperaba una expresión (variable, string, tipo)"));
+    }
+    // **********************************
+
     function analizarSintactico(tokens) {
         parserTokens = tokens;
         parserPos = 0;
@@ -642,26 +664,6 @@
         return { type: 'SiStatement', condition, body };
     }
     
-    function parseExpression() {
-        if (match(TokenType.STRING)) {
-            return { type: 'Literal', value: previous().value };
-        }
-        if (match(TokenType.TIPO_DATO)) {
-             return { type: 'Literal', value: previous().value };
-        }
-        
-        if (match(TokenType.IDENTIFICADOR)) {
-            const id = previous().value;
-            if (match(TokenType.PUNTO)) {
-                const property = consume(TokenType.IDENTIFICADOR, "Se esperaba nombre de propiedad (url, nombre) después de '.'").value;
-                return { type: 'MemberExpression', object: id, property: property };
-            }
-            return { type: 'Identifier', name: id };
-        }
-
-        throw new Error(parseError(peek(), "Se esperaba una expresión (variable, string, tipo)"));
-    }
-
 
     // ==================================================================
     // 5. INTÉRPRETE DE EJECUCIÓN (AST)
