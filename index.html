@@ -307,6 +307,7 @@
     // 1. ESTADO Y DATOS INICIALES (CON SINTAXIS ESTRICTA ';')
     // ==================================================================
     
+    // ***** FIX 1: Archivos base actualizados con ';' obligatorio *****
     const initialFiles = {
         'simple.ytd': 
 `FUNCION main() {
@@ -552,7 +553,6 @@
         if (match(TokenType.DESCARGAR)) return parseDescargarStatement();
         if (match(TokenType.PARA)) return parseParaCadaStatement();
         if (match(TokenType.SI)) return parseSiStatement();
-        // Permitir ; vacíos (líneas en blanco con ;)
         if (match(TokenType.PUNTO_COMA)) { return { type: 'EmptyStatement' }; } 
         
         throw new Error(parseError(peek(), "Instrucción no reconocida"));
@@ -644,7 +644,55 @@
         return { type: 'SiStatement', condition, body };
     }
     
-    // ***** BUG FIX: Esta es una función normal, NO un generador *****
+    // ***** FIX 2: La función 'parseExpression' que faltaba *****
+    function parseExpression() {
+        if (match(TokenType.STRING)) {
+            return { type: 'Literal', value: previous().value };
+        }
+        if (match(TokenType.TIPO_DATO)) {
+             return { type: 'Literal', value: previous().value };
+        }
+        
+        if (match(TokenType.IDENTIFICADOR)) {
+            const id = previous().value;
+            if (match(TokenType.PUNTO)) {
+                const property = consume(TokenType.IDENTIFICADOR, "Se esperaba nombre de propiedad (url, nombre) después de '.'").value;
+                return { type: 'MemberExpression', object: id, property: property };
+            }
+            return { type: 'Identifier', name: id };
+        }
+
+        throw new Error(parseError(peek(), "Se esperaba una expresión (variable, string, tipo)"));
+    }
+
+
+    // ==================================================================
+    // 5. SIMULADOR DE EJECUCIÓN (Intérprete del AST)
+    // ==================================================================
+
+    class Environment {
+        constructor() { this.variables = new Map(); }
+        define(name, value) { this.variables.set(name, value); }
+        assign(name, value) {
+            this.variables.set(name, value);
+        }
+        get(name) {
+            if (!this.variables.has(name)) {
+                if (name.includes('.')) { 
+                     const [objName, propName] = name.split('.');
+                     const obj = this.get(objName);
+                     if (typeof obj !== 'object' || obj === null) {
+                         throw new Error(`Simulación: '${objName}' no es un objeto.`);
+                     }
+                     return obj[propName];
+                }
+                throw new Error(`Simulación: Variable no definida '${name}'.`);
+            }
+            return this.variables.get(name);
+        }
+    }
+
+    // ***** FIX 3: 'evaluateExpression' NO es un generador (no usa yield) *****
     function evaluateExpression(node, environment) {
         if (!node) return undefined;
         switch(node.type) {
@@ -668,36 +716,11 @@
     }
 
 
-    // ==================================================================
-    // 5. SIMULADOR DE EJECUCIÓN (Intérprete del AST)
-    // ==================================================================
-
-    class Environment {
-        constructor() { this.variables = new Map(); }
-        define(name, value) { this.variables.set(name, value); }
-        assign(name, value) {
-            this.variables.set(name, value);
-        }
-        get(name) {
-            if (!this.variables.has(name)) {
-                // Para 'PARA CADA', el array puede no existir
-                if (name.includes('.')) { 
-                     const [objName, propName] = name.split('.');
-                     const obj = this.get(objName);
-                     return obj[propName];
-                }
-                throw new Error(`Simulación: Variable no definida '${name}'.`);
-            }
-            return this.variables.get(name);
-        }
-    }
-
     async function* simulationGenerator(astNode, environment) {
         if (!astNode) {
             return; // Ignorar nodos nulos
         }
         
-        // --- Helper de simulación para pedir input validado ---
         async function* askForInput(prompt, options) {
             let input;
             prompt.split('\n').forEach(line => writeToConsole(line, 'line-sim-output'));
@@ -709,15 +732,13 @@
                 input = yield { type: 'input', prompt: "" }; 
                 
                 if (regex.test(input)) {
-                    return options[input]; // Devuelve el VALOR, ej: 'mp3'
+                    return options[input];
                 } else {
                     writeToConsole(`> Opción no válida. Intente de nuevo.`, 'line-error');
                     yield { type: 'input_prompt_only', prompt: "" };
                 }
             }
         }
-        // --- Fin del Helper ---
-
         
         switch (astNode.type) {
             case 'Program':
@@ -759,18 +780,19 @@
             case 'DescargarStatement':
                 const args = [];
                 for(const argNode of astNode.arguments) {
-                    // ***** BUG FIX: Sin yield* *****
+                    // Llamada a la función normal 'evaluateExpression'
                     const evaluatedArg = evaluateExpression(argNode, environment);
                     args.push(evaluatedArg);
                 }
                 const [url, formato, nombre, ruta] = args;
                 
-                // ***** BUG FIX: Chequear 'url' *****
+                // ***** FIX 4: El bug que reportaste (toLowerCase) *****
                 if (typeof url === 'undefined') {
-                    throw new Error("La URL es 'undefined'. ¿La variable 'link' se leyó correctamente?");
+                    throw new Error(`La URL es 'undefined'. Verifica que la variable 'link' o 'playlistURL' se haya leído (LEER) correctamente.`);
                 }
 
                 if (formato.trim() === '') {
+                    // Ahora 'url' está garantizado que es un string
                     let loopCount = (url.toLowerCase().includes('playlist')) ? 3 : 1;
                     if (loopCount > 1) {
                          writeToConsole(`> Playlist detectada. Simulando descarga de ${loopCount} videos...`, 'line-info');
@@ -906,7 +928,6 @@
         tabData[activeFile] = editor.value;
     }
 
-    // ***** MANEJADOR DE INPUT CORREGIDO *****
     async function handleConsoleKeyDown(e) {
         if (e.key !== 'Enter') return;
         
@@ -952,7 +973,6 @@
     // --- Flujo de Ejecución ---
 
     function runAnalysisAndSimulation() {
-        // ***** SIN AUTOCORRECCIÓN DE ';' *****
         const code = tabData[activeFile];
         
         consoleOutput.innerHTML = '';
@@ -1015,7 +1035,6 @@
                     advanceSimulation(nextValue); 
                 }
             } else {
-                // Si no es un 'input' (p.ej. un 'sleep' o nada), sigue avanzando
                 advanceSimulation();
             }
             
