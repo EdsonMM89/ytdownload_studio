@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>YTDOWNLOAD </title>
+    <title>YTDOWNLOAD Studio (Sintaxis Estricta)</title>
     <style>
         :root {
             --color-bg-darkest: #101010;
@@ -54,16 +54,16 @@
         }
 
         /* --- Panel Izquierdo (Editor + Consola) --- */
-        .left-pane {
+        .main-pane {
             flex-grow: 1;
             display: flex;
             flex-direction: column;
             background-color: var(--color-bg-dark);
-            height: 100%; /* Ocupa todo el alto disponible */
+            height: 100%; 
         }
 
         .editor-wrapper {
-            flex: 60; /* 60% del espacio */
+            flex: 60; 
             position: relative;
         }
 
@@ -79,7 +79,7 @@
             line-height: 1.6;
             resize: none;
             outline: none;
-            box-sizing: border-box; /* Importante */
+            box-sizing: border-box; 
         }
 
         .controls-bar {
@@ -124,7 +124,7 @@
 
 
         .console-wrapper {
-            flex: 40; /* 40% del espacio */
+            flex: 40; 
             display: flex;
             flex-direction: column;
             background-color: var(--color-consola-bg);
@@ -141,7 +141,6 @@
             word-wrap: break-word;
         }
         
-        /* Clases de líneas de la consola */
         #console-output .line { margin-bottom: 5px; }
         #console-output .line-error { color: var(--color-rojo); font-weight: bold; }
         #console-output .line-success { color: var(--color-verde); font-weight: bold; }
@@ -161,7 +160,7 @@
             color: var(--color-verde);
             margin-right: 8px;
             flex-shrink: 0;
-            white-space: pre; /* Respeta espacios en el prompt */
+            white-space: pre; 
         }
 
         #console-input {
@@ -191,17 +190,17 @@
 
 
         /* --- Panel Derecho (Sidebar) --- */
-        .right-pane {
-            flex-basis: 250px; /* Ancho fijo */
+        .sidebar-pane {
+            flex-basis: 250px; 
             flex-shrink: 0;
             background-color: var(--color-bg-sidebar);
-            border-left: 1px solid var(--color-borde);
+            border-left: 1px solid var(--color-borde); /* Borde a la izquierda */
             padding: 20px;
             overflow-y: auto;
             box-sizing: border-box;
         }
         
-        .right-pane h3 {
+        .sidebar-pane h3 {
             color: var(--color-rojo);
             margin-top: 0;
             border-bottom: 1px solid var(--color-borde);
@@ -264,17 +263,18 @@
 <body>
 
     <div class="studio-container">
-        <header>YTDOWNLOAD</header>
+        <header>YTDOWNLOAD Studio</header>
         
         <main class="main-content">
-            <div class="left-pane">
+
+            <div class="main-pane">
                 
                 <div class="editor-wrapper">
                     <textarea id="editor" spellcheck="false" autocomplete="off"></textarea>
                 </div>
 
                 <div class="controls-bar">
-                    <button id="run-button"> Ejecutar </button>
+                    <button id="run-button">► Ejecutar Código</button>
                     <span id="status-text">Estado: Listo</span>
                 </div>
 
@@ -289,13 +289,15 @@
 
             </div>
 
-            <aside class="right-pane">
+            <aside class="sidebar-pane">
                 <h3>Archivos</h3>
                 <ul class="file-list" id="file-list">
                     </ul>
 
-                <button id="upload-button">Subir archivo .ytd</button>
+                <button id="upload-button">Subir archivo .txt</button>
+                <p class="upload-info">Los archivos subidos crean nuevas pestañas editables.</p>
             </aside>
+            
         </main>
     </div>
     
@@ -340,9 +342,9 @@
     // Estado de la aplicación
     let tabData = { ...initialFiles };
     let activeFile = 'simple.ytd';
-    let consoleMode = 'command'; // 'command' | 'simulation' | 'idle'
-    let currentProcess = null; // Renombrado de 'currentSimulation'
-    let processInputResolve = null; // Renombrado de 'simulationInputResolve'
+    let consoleMode = 'command'; // 'command' | 'processing' | 'idle'
+    let currentProcess = null; 
+    let processInputResolve = null; 
     let currentInputPrompt = ""; 
 
     // ==================================================================
@@ -512,6 +514,26 @@
         throw new Error(parseError(peek(), mensaje));
     };
 
+    function parseExpression() {
+        if (match(TokenType.STRING)) {
+            return { type: 'Literal', value: previous().value };
+        }
+        if (match(TokenType.TIPO_DATO)) {
+             return { type: 'Literal', value: previous().value };
+        }
+        
+        if (match(TokenType.IDENTIFICADOR)) {
+            const id = previous().value;
+            if (match(TokenType.PUNTO)) {
+                const property = consume(TokenType.IDENTIFICADOR, "Se esperaba nombre de propiedad (url, nombre) después de '.'").value;
+                return { type: 'MemberExpression', object: id, property: property };
+            }
+            return { type: 'Identifier', name: id };
+        }
+
+        throw new Error(parseError(peek(), "Se esperaba una expresión (variable, string, tipo)"));
+    }
+
     function analizarSintactico(tokens) {
         parserTokens = tokens;
         parserPos = 0;
@@ -555,8 +577,6 @@
         
         throw new Error(parseError(peek(), "Instrucción no reconocida"));
     }
-
-    // --- Parser con ; OBLIGATORIO ---
 
     function parseVarDeclaration() {
         const name = consume(TokenType.IDENTIFICADOR, "Se esperaba un nombre para la variable").value;
@@ -642,26 +662,6 @@
         return { type: 'SiStatement', condition, body };
     }
     
-    function parseExpression() {
-        if (match(TokenType.STRING)) {
-            return { type: 'Literal', value: previous().value };
-        }
-        if (match(TokenType.TIPO_DATO)) {
-             return { type: 'Literal', value: previous().value };
-        }
-        
-        if (match(TokenType.IDENTIFICADOR)) {
-            const id = previous().value;
-            if (match(TokenType.PUNTO)) {
-                const property = consume(TokenType.IDENTIFICADOR, "Se esperaba nombre de propiedad (url, nombre) después de '.'").value;
-                return { type: 'MemberExpression', object: id, property: property };
-            }
-            return { type: 'Identifier', name: id };
-        }
-
-        throw new Error(parseError(peek(), "Se esperaba una expresión (variable, string, tipo)"));
-    }
-
 
     // ==================================================================
     // 5. INTÉRPRETE DE EJECUCIÓN (AST)
@@ -773,18 +773,25 @@
                 }
                 break;
             
+            // ***** ESTA ES LA SECCIÓN MODIFICADA *****
             case 'DescargarStatement':
                 const args = [];
                 for(const argNode of astNode.arguments) {
                     const evaluatedArg = evaluateExpression(argNode, environment);
                     args.push(evaluatedArg);
                 }
-                const [url, formato, nombre, ruta] = args;
+                let [url, formato, nombre, ruta] = args;
                 
                 if (typeof url === 'undefined') {
                     throw new Error(`La URL es 'undefined'. Verifica que la variable 'link' o 'playlistURL' se haya leído (LEER) correctamente.`);
                 }
 
+                let formatoSeleccionado = formato;
+                let calidadSeleccionada = "default"; // El backend usará 'best' si es modo lote
+
+                // ---------------------------------------------
+                // MODO 1: INTERACTIVO (formato está vacío)
+                // ---------------------------------------------
                 if (formato.trim() === '') {
                     let loopCount = (url.toLowerCase().includes('playlist')) ? 3 : 1;
                     if (loopCount > 1) {
@@ -795,54 +802,42 @@
                         let videoNombre = (loopCount > 1) ? `${nombre}_${i+1}` : nombre;
                         if(loopCount > 1) writeToConsole(`--- Video ${i+1} de ${loopCount} (${videoNombre}) ---`, 'line-warn');
 
-                        // ***** NUEVOS FORMATOS *****
                         const formatoMap = { 
-                            '1': 'mp3', 
-                            '2': 'mp4', 
-                            '3': 'mkv', 
-                            '4': 'wav', 
-                            '5': 'avi', 
-                            '6': 'flac',
-                            '7': 'webm'
+                            '1': 'mp3', '2': 'mp4', '3': 'mkv', '4': 'wav', 
+                            '5': 'avi', '6': 'flac', '7': 'webm'
                         };
                         const formatoPrompt = '> Seleccione formato:\n' +
-                                            '1. mp3 (Audio)\n' +
-                                            '2. mp4 (Video)\n' +
-                                            '3. mkv (Video)\n' +
-                                            '4. wav (Audio)\n' +
-                                            '5. avi (Video)\n' +
-                                            '6. flac (Audio)\n' +
-                                            '7. webm (Video)';
-                        const formatoSeleccionado = yield* askForInput(formatoPrompt, formatoMap); 
+                                            '1. mp3 (Audio)\n2. mp4 (Video)\n3. mkv (Video)\n' +
+                                            '4. wav (Audio)\n5. avi (Video)\n6. flac (Audio)\n7. webm (Video)';
+                        formatoSeleccionado = yield* askForInput(formatoPrompt, formatoMap); 
 
-                        // ***** LÓGICA DE CALIDAD MEJORADA *****
-                        let calidadSeleccionada;
                         const audioFormats = ['mp3', 'wav', 'flac'];
-                        
                         if (audioFormats.includes(formatoSeleccionado)) {
                             const calidadAudioMap = { '1': '128kbps', '2': '192kbps', '3': '320kbps' };
                             calidadSeleccionada = yield* askForInput(
-                                '> Seleccione calidad de audio:\n1. 128kbps (Estándar)\n2. 192kbps (Buena)\n3. 320kbps (Alta Calidad)',
+                                '> Seleccione calidad de audio:\n1. 128kbps\n2. 192kbps\n3. 320kbps',
                                 calidadAudioMap
                             );
                         } else { // Video
                             const calidadVideoMap = { '1': '360p', '2': '720p', '3': '1080p' };
                             calidadSeleccionada = yield* askForInput(
-                                '> Seleccione calidad de video:\n1. 360p (Baja)\n2. 720p (HD)\n3. 1080p (Full HD)',
+                                '> Seleccione calidad de video:\n1. 360p\n2. 720p\n3. 1080p',
                                 calidadVideoMap
                             );
                         }
                         
-                        writeToConsole(`> Descargando '${videoNombre}' (${formatoSeleccionado} @ ${calidadSeleccionada})...`, 'line-info');
-                        await sleep(1500);
-                        writeToConsole(`> Descarga completada en ${ruta}`, 'line-success');
+                        // En modo interactivo, llamamos al backend en CADA iteración
+                        await realDownload(url, formatoSeleccionado, calidadSeleccionada, videoNombre, ruta);
                     }
+                // ---------------------------------------------
+                // MODO 2: BATCH (formato tiene un valor)
+                // ---------------------------------------------
                 } else {
-                    writeToConsole(`> Descargando (lote) '${nombre}.${formato}'...`, 'line-info');
-                    await sleep(1000); 
-                    writeToConsole(`> Descarga completada en ${ruta}`, 'line-success');
+                    // En modo lote, solo llamamos al backend una vez
+                    await realDownload(url, formatoSeleccionado, calidadSeleccionada, nombre, ruta);
                 }
                 break;
+            // ***** FIN DE LA SECCIÓN MODIFICADA *****
 
             case 'ParaCadaStatement':
                 const array = environment.get(astNode.arrayVar);
@@ -872,6 +867,40 @@
                 throw new Error(`Ejecución: Nodo AST no reconocido '${astNode.type}'.`);
         }
     }
+    
+    // ***** NUEVA FUNCIÓN HELPER PARA LLAMAR AL BACKEND *****
+    async function realDownload(url, formato, calidad, nombre, ruta) {
+        writeToConsole(`> Contactando al servidor para descargar '${nombre}'...`, 'line-info');
+        
+        try {
+            const response = await fetch('/download', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    url: url,
+                    formato: formato,
+                    calidad: calidad,
+                    nombre: nombre,
+                    ruta: ruta // El backend puede decidir ignorar esto
+                })
+            });
+
+            const result = await response.json();
+
+            if (result.status === 'success') {
+                writeToConsole(`> ${result.message}`, 'line-success');
+            } else {
+                writeToConsole(`> Error del Servidor: ${result.message}`, 'line-error');
+            }
+            
+        } catch (error) {
+            console.error('Error de red:', error);
+            writeToConsole(`> Error de Red: No se pudo conectar al servidor Python.`, 'line-error');
+        }
+    }
+
 
     // ==================================================================
     // 6. CONTROLADOR PRINCIPAL (UI, Consola, Pestañas)
@@ -890,7 +919,7 @@
         uploadButton.addEventListener('click', () => fileUploader.click());
         
         writeToConsole('--- YTDOWNLOAD Studio ---', 'line-warn');
-        writeToConsole('Seleccione un archivo y presione "Ejecutar".');
+        writeToConsole('Seleccione un archivo y presione "Ejecutar Código".');
         
         setConsoleMode('idle');
     }
